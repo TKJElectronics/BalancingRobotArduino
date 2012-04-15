@@ -33,18 +33,18 @@ enum steerDirection {
 #define leftPortDirection DDRD
 #define leftPwmPortDirection DDRB
 
-#define leftA 0 // PD0 - pin 0
-#define leftB 1 // PD1 - pin 1
-#define leftPWM 1 // PB1 - pin 9 (OC1A)
+#define leftA PIND0 // PD0 - pin 0
+#define leftB PIND1 // PD1 - pin 1
+#define leftPWM PINB1 // PB1 - pin 9 (OC1A)
 
 /* Right motor */
 #define rightPort PORTC
 #define rightPortDirection DDRC
 #define rightPwmPortDirection DDRB
 
-#define rightA 4 // PC4 - pin A4
-#define rightB 5 // PC5 - pin A5
-#define rightPWM 2 // PB2 - pin 10 (OC1B)
+#define rightA PINC4 // PC4 - pin A4
+#define rightB PINC5 // PC5 - pin A5
+#define rightPWM PINB2 // PB2 - pin 10 (OC1B)
 
 /* Encoders */
 #define leftEncoder1 2
