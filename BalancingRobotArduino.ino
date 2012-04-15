@@ -10,7 +10,7 @@
 #include "BalancingRobot.h"
 #include <PS3BT.h> // SS is rerouted to 8 and INT is rerouted to 7
 USB Usb;
-PS3BT BT(&Usb,0x00,0x15,0x83,0x3D,0x0A,0x57); // Also remember to disable DEBUG in "PS3BT.cpp" to space
+PS3BT BT(&Usb,0x00,0x15,0x83,0x3D,0x0A,0x57); // Also remember to disable DEBUG in "PS3BT.cpp" to save space
 
 void setup() {
   /* Setup encoders */
@@ -305,7 +305,7 @@ double getAccY() {
   accYval--; // -1g when lying down
   double accZval = (double)((double)analogRead(accZ) - zeroValues[3]) / 102.3;
 
-  double R = sqrt(pow(accXval, 2) + pow(accYval, 2) + pow(accZval, 2)); // Calculate the length of force vector
+  double R = sqrt((accXval*accXval) + (accYval*accYval) + (accZval*accZval)); // Calculate the length of the force vector
   double angleY = acos(accYval / R) * RAD_TO_DEG;
   return angleY;
 }
