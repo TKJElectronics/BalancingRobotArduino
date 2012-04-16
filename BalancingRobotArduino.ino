@@ -403,13 +403,13 @@ void setPWM(uint8_t pin, int dutyCycle) { // dutyCycle is a value between 0-ICR
 
 /* Interrupt routine and encoder read functions - I read using the port registers for faster processing */
 void leftEncoder() { 
-  if(PIND & _BV(4)) // pin 4
+  if(PIND & _BV(PIND4)) // pin 4
     leftCounter++;
   else
     leftCounter--;    
 }
 void rightEncoder() {
-  if(PIND & _BV(5)) // pin 5
+  if(PIND & _BV(PIND5)) // pin 5
     rightCounter++;
   else
     rightCounter--;  
