@@ -61,6 +61,8 @@ volatile long rightCounter = 0;
 #define accY A2
 #define accZ A3
 
+bool inverted; // This is used to check which side is lying down
+
 #define buzzer 6 // Connected to a BC547 transistor - there is a protection diode at the buzzer as well
 
 // Zero voltage values for the sensors - [0] = gyroY, [1] = accX, [2] = accY, [3] = accZ
@@ -71,8 +73,8 @@ const float Q_angle = 0.001; // Process noise covariance for the accelerometer -
 const float Q_gyro = 0.003; // Process noise covariance for the gyro - Sw
 const float R_angle = 0.03; // Measurement noise covariance - Sv
 
-double angle = 180; // It starts at 180 degrees, when laying down
-double bias = 0;
+double angle; // The angle output from the Kalman filter
+double bias = 0; // The gyro bias calculated by the Kalman filter
 double P_00 = 0, P_01 = 0, P_10 = 0, P_11 = 0;
 double dt, y, S;
 double K_0, K_1;

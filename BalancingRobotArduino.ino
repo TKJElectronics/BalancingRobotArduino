@@ -72,7 +72,7 @@ void loop() {
   gyroYrate = getGyroYrate();
   // See my guide for more info about calculation the angles and the Kalman filter: http://arduino.cc/forum/index.php/topic,58048.0.htm
   pitch = kalman(accYangle, gyroYrate, (double)(micros() - timer)); // calculate the angle using a Kalman filter
-  timer = micros();
+  timer = micros();  
 
   /* Drive motors */
   if (pitch < 60 || pitch > 120) // Stop if falling or laying down
@@ -302,7 +302,10 @@ double getAccY() {
   // (accAdc-accZero)/Sensitivity (In quids) - Sensitivity = 0.33/3.3*1023=102.3
   double accXval = (double)((double)analogRead(accX) - zeroValues[1]) / 102.3;
   double accYval = (double)((double)analogRead(accY) - zeroValues[2]) / 102.3;
-  accYval--; // -1g when lying down
+  if(inverted)
+    accYval--; // -1g when lying at one of the sides
+  else
+    accYval++; // +1g when lying at the other side
   double accZval = (double)((double)analogRead(accZ) - zeroValues[3]) / 102.3;
 
   double R = sqrt((accXval*accXval) + (accYval*accYval) + (accZval*accZval)); // Calculate the length of the force vector
@@ -322,6 +325,14 @@ void calibrateSensors() {
   zeroValues[1] = adc[1] / 100; // Accelerometer X-axis
   zeroValues[2] = adc[2] / 100; // Accelerometer Y-axis
   zeroValues[3] = adc[3] / 100; // Accelerometer Z-axis
+  
+  if(zeroValues[2] > 500) {// Check which side is lying down
+    inverted = false;
+    angle = 0; // It starts at 0 degress and 180 when facing the other way
+  } else {
+    inverted = true;
+    angle = 180;
+  }
   
   digitalWrite(buzzer,HIGH);
   delay(100);  
