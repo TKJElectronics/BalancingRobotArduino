@@ -86,8 +86,10 @@ double pitch;
 
 /* PID variables */
 double Kp = 8;
+double Kp = 7; // 8
 double Ki = 2;
 double Kd = 9;
+double Kd = 8; // 9
 double targetAngle = 90;
 
 double lastError; // Store position error
