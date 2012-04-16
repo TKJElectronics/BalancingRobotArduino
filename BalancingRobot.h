@@ -12,12 +12,12 @@
 #define PWMVALUE F_CPU/PWM_FREQUENCY/2 // Frequency is given by F_CPU/(2*N*ICR) - where N is the prescaler, we use no prescaling so frequency is given by F_CPU/(2*ICR) - ICR = F_CPU/PWM_FREQUENCY/2
 
 /* Used for the PS3 Communication and motor functions */
-int lastDirection; // This is used set a new targetPosition
-enum steerDirection {
+int lastCommand; // This is used set a new targetPosition
+enum Command {
   update,
+  stop,
   forward,
   backward,
-  stop,
   left,
   right,
   both,
@@ -85,10 +85,8 @@ double gyroYrate;
 double pitch;
 
 /* PID variables */
-double Kp = 8;
 double Kp = 7; // 8
 double Ki = 2;
-double Kd = 9;
 double Kd = 8; // 9
 double targetAngle = 90;
 

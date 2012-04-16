@@ -208,7 +208,7 @@ void receivePS3() {
     steer(stop);    
 }
 
-void steer(steerDirection direction) {
+void steer(Command command) {
   if(BT.PS3BTConnected) {
     if(BT.getAnalogHat(LeftHatY) < 117 && BT.getAnalogHat(RightHatY) < 117) {
         targetOffset = ((double)(232-(BT.getAnalogHat(LeftHatY)+BT.getAnalogHat(RightHatY))))/33.142857143; // 232/7=33.142857143 - convert from 232-0 to 0-7
@@ -241,14 +241,14 @@ void steer(steerDirection direction) {
       steerRight = true;
     }
   }
-  if(direction == stop) {
+  if(command == stop) {
     steerStop = true;    
-    if(lastDirection != stop) { // Set new stop position
+    if(lastCommand != stop) { // Set new stop position
       targetPosition = wheelPosition;
       stopped = false;
     }
   }
-  lastDirection = direction;
+  lastCommand = command;
 }
 void stopAndReset() {
   stopMotor(both);
@@ -338,7 +338,7 @@ void calibrateSensors() {
   delay(100);  
   digitalWrite(buzzer,LOW);
 }
-void moveMotor(steerDirection motor, steerDirection direction, double speedRaw) { // speed is a value in percentage 0-100%
+void moveMotor(Command motor, Command direction, double speedRaw) { // speed is a value in percentage 0-100%
   if(speedRaw > 100)
     speedRaw = 100;
   int speed = speedRaw*((double)PWMVALUE)/100; // Scale from 100 to PWMVALUE
@@ -381,7 +381,7 @@ void moveMotor(steerDirection motor, steerDirection direction, double speedRaw) 
     }
   }
 }
-void stopMotor(steerDirection motor) {  
+void stopMotor(Command motor) {  
   if (motor == left) {
     setPWM(leftPWM,PWMVALUE); // Set high
     sbi(leftPort,leftA);
