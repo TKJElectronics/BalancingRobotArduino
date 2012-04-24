@@ -69,9 +69,9 @@ bool inverted; // This is used to check which side is lying down
 double zeroValues[4];
 
 /* Kalman filter variables and constants */
-const float Q_angle = 0.001; // Process noise covariance for the accelerometer - Sw
-const float Q_gyro = 0.003; // Process noise covariance for the gyro - Sw
-const float R_angle = 0.03; // Measurement noise covariance - Sv
+const double Q_angle = 0.001; // Process noise covariance for the accelerometer - Sw
+const double Q_gyro = 0.003; // Process noise covariance for the gyro - Sw
+const double R_angle = 0.03; // Measurement noise covariance - Sv
 
 double angle; // The angle output from the Kalman filter
 double bias = 0; // The gyro bias calculated by the Kalman filter
@@ -85,10 +85,10 @@ double gyroYrate;
 double pitch;
 
 /* PID variables */
-double Kp = 7; // 8
-double Ki = 2;
-double Kd = 8; // 9
-double targetAngle = 90;
+const double Kp = 7; // 8
+const double Ki = 2;
+const double Kd = 8; // 9
+const double targetAngle = 180;
 
 double lastError; // Store position error
 double iTerm; // Store integral term

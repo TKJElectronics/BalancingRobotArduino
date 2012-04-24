@@ -53,13 +53,13 @@ void setup() {
   pinMode(gyroY,INPUT);
   pinMode(accX,INPUT);
   pinMode(accY,INPUT);
-  pinMode(accZ,INPUT);
-
-  /* Calibrate the gyro and accelerometer relative to ground */
-  calibrateSensors();
+  pinMode(accZ,INPUT);      
   
   if (Usb.Init() == -1) // Check if USB Host Shield is working
-    while(1); //halt    
+    while(1); // Halt
+    
+  /* Calibrate the gyro and accelerometer relative to ground */
+  calibrateSensors();
 
   /* Setup timing */
   loopStartTime = micros();
@@ -72,10 +72,10 @@ void loop() {
   gyroYrate = getGyroYrate();
   // See my guide for more info about calculation the angles and the Kalman filter: http://arduino.cc/forum/index.php/topic,58048.0.htm
   pitch = kalman(accYangle, gyroYrate, (double)(micros() - timer)); // calculate the angle using a Kalman filter
-  timer = micros();  
+  timer = micros();
 
   /* Drive motors */
-  if (pitch < 60 || pitch > 120) // Stop if falling or laying down
+  if (pitch < 150 || pitch > 210) // Stop if falling or laying down
     stopAndReset();
   else
     PID(targetAngle,targetOffset,turningOffset);
@@ -122,10 +122,10 @@ void PID(double restAngle, double offset, double turning) {
     else // Inside zone C
     restAngle -= (double)positionError/positionScaleC;   
     restAngle -= (double)wheelVelocity/velocityScaleStop;
-    if (restAngle < 80) // Limit rest Angle
-      restAngle = 80;
-    else if (restAngle > 100)
-      restAngle = 100;
+    if (restAngle < 160) // Limit rest Angle
+      restAngle = 160;
+    else if (restAngle > 200)
+      restAngle = 200;
   }
   /* Update PID values */
   double error = (restAngle - pitch);
@@ -308,9 +308,16 @@ double getAccY() {
     accYval++; // +1g when lying at the other side
   double accZval = (double)((double)analogRead(accZ) - zeroValues[3]) / 102.3;
 
-  double R = sqrt((accXval*accXval) + (accYval*accYval) + (accZval*accZval)); // Calculate the length of the force vector
-  double angleY = acos(accYval / R) * RAD_TO_DEG;
-  return angleY;
+  double R = sqrt(accXval*accXval + accYval*accYval + accZval*accZval); // Calculate the length of the force vector  
+
+  // Normalize vectors
+  accYval = accYval/R; 
+  accZval = accZval/R;  
+
+  // Convert to 360 degrees resolution
+  // atan2 outputs the value of -π to π (radians) - see http://en.wikipedia.org/wiki/Atan2
+  // We are then convert it to 0 to 2π and then from radians to degrees
+  return (atan2(-accYval,-accZval)+PI)*RAD_TO_DEG;
 }
 void calibrateSensors() {
   double adc[4] = { 0 };
@@ -326,12 +333,12 @@ void calibrateSensors() {
   zeroValues[2] = adc[2] / 100; // Accelerometer Y-axis
   zeroValues[3] = adc[3] / 100; // Accelerometer Z-axis
   
-  if(zeroValues[2] > 500) {// Check which side is lying down
+  if(zeroValues[2] > 500) { // Check which side is lying down
     inverted = false;
-    angle = 0; // It starts at 0 degress and 180 when facing the other way
+    angle = 90; // It starts at 90 degress and 270 when facing the other way
   } else {
     inverted = true;
-    angle = 180;
+    angle = 270;
   }
   
   digitalWrite(buzzer,HIGH);
