@@ -51,7 +51,6 @@ void setup() {
   /* Setup IMU Inputs */
   analogReference(EXTERNAL); // Set voltage reference to 3.3V by connecting AREF to 3.3V
   pinMode(gyroY,INPUT);
-  pinMode(accX,INPUT);
   pinMode(accY,INPUT);
   pinMode(accZ,INPUT);      
   
@@ -72,7 +71,7 @@ void loop() {
   gyroYrate = getGyroYrate();
   // See my guide for more info about calculation the angles and the Kalman filter: http://arduino.cc/forum/index.php/topic,58048.0.htm
   pitch = kalman(accYangle, gyroYrate, (double)(micros() - timer)); // calculate the angle using a Kalman filter
-  timer = micros();
+  timer = micros();  
 
   /* Drive motors */
   if (pitch < 150 || pitch > 210) // Stop if falling or laying down
@@ -299,45 +298,30 @@ double getGyroYrate() {
   return gyroRate;
 }
 double getAccY() {
-  // (accAdc-accZero)/Sensitivity (In quids) - Sensitivity = 0.33/3.3*1023=102.3
-  double accXval = (double)((double)analogRead(accX) - zeroValues[1]) / 102.3;
-  double accYval = (double)((double)analogRead(accY) - zeroValues[2]) / 102.3;
-  if(inverted)
-    accYval--; // -1g when lying at one of the sides
-  else
-    accYval++; // +1g when lying at the other side
-  double accZval = (double)((double)analogRead(accZ) - zeroValues[3]) / 102.3;
-
-  double R = sqrt(accXval*accXval + accYval*accYval + accZval*accZval); // Calculate the length of the force vector  
-
-  // Normalize vectors
-  accYval = accYval/R; 
-  accZval = accZval/R;  
-
+  double accYval = ((double)analogRead(accY) - zeroValues[1]);  
+  double accZval = ((double)analogRead(accZ) - zeroValues[2]);
   // Convert to 360 degrees resolution
   // atan2 outputs the value of -π to π (radians) - see http://en.wikipedia.org/wiki/Atan2
   // We are then convert it to 0 to 2π and then from radians to degrees
   return (atan2(-accYval,-accZval)+PI)*RAD_TO_DEG;
 }
 void calibrateSensors() {
-  double adc[4] = { 0 };
+  double adc[3] = { 0 };
   for (uint8_t i = 0; i < 100; i++) { // Take the average of 100 readings
     adc[0] += analogRead(gyroY);
-    adc[1] += analogRead(accX);
-    adc[2] += analogRead(accY);
-    adc[3] += analogRead(accZ);
+    adc[1] += analogRead(accY);
+    adc[2] += analogRead(accZ);
     delay(10);
   }
   zeroValues[0] = adc[0] / 100; // Gyro X-axis
-  zeroValues[1] = adc[1] / 100; // Accelerometer X-axis
-  zeroValues[2] = adc[2] / 100; // Accelerometer Y-axis
-  zeroValues[3] = adc[3] / 100; // Accelerometer Z-axis
+  zeroValues[1] = adc[1] / 100; // Accelerometer Y-axis
+  zeroValues[2] = adc[2] / 100; // Accelerometer Z-axis
   
-  if(zeroValues[2] > 500) { // Check which side is lying down
-    inverted = false;
+  if(zeroValues[1] > 500) { // Check which side is lying down - 1g is equal to 0.33V or 102.3 quids (0.33/3.3*1023=102.3)
+    zeroValues[1] -= 102.3; // -1g when lying at one of the sides
     angle = 90; // It starts at 90 degress and 270 when facing the other way
   } else {
-    inverted = true;
+    zeroValues[1] += 102.3; // +1g when lying at the other side
     angle = 270;
   }
   

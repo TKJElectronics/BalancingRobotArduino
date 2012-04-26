@@ -57,16 +57,13 @@ volatile long rightCounter = 0;
 
 /* IMU */
 #define gyroY A0
-#define accX A1
-#define accY A2
-#define accZ A3
-
-bool inverted; // This is used to check which side is lying down
+#define accY A1
+#define accZ A2
 
 #define buzzer 6 // Connected to a BC547 transistor - there is a protection diode at the buzzer as well
 
-// Zero voltage values for the sensors - [0] = gyroY, [1] = accX, [2] = accY, [3] = accZ
-double zeroValues[4];
+// Zero voltage values for the sensors - [0] = gyroY, [1] = accY, [2] = accZ
+double zeroValues[3];
 
 /* Kalman filter variables and constants */
 const double Q_angle = 0.001; // Process noise covariance for the accelerometer - Sw
@@ -85,9 +82,9 @@ double gyroYrate;
 double pitch;
 
 /* PID variables */
-const double Kp = 7; // 8
+const double Kp = 7;
 const double Ki = 2;
-const double Kd = 8; // 9
+const double Kd = 8;
 const double targetAngle = 180;
 
 double lastError; // Store position error
