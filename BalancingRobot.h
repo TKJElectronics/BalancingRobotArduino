@@ -3,11 +3,6 @@
 
 #include <stdint.h> // Needed for uint8_t
 
-/* Define CPU frequency in Mhz here if not defined in Makefile - this is set in the Arduino IDE */
-#ifndef F_CPU
-#define F_CPU 16000000UL  // 16 MHz
-#endif
-
 #define PWM_FREQUENCY 20000 // The motor driver can handle a pwm frequency up to 20kHz
 #define PWMVALUE F_CPU/PWM_FREQUENCY/2 // Frequency is given by F_CPU/(2*N*ICR) - where N is the prescaler, we use no prescaling so frequency is given by F_CPU/(2*ICR) - ICR = F_CPU/PWM_FREQUENCY/2
 

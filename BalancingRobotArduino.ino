@@ -40,8 +40,7 @@ void setup() {
   /* Enable PWM on pin 9 (OC1A) & pin 10 (OC1B) */
   // Clear OC1A/OC1B on compare match when up-counting
   // Set OC1A/OC1B on compare match when downcountin
-  TCCR1A |= _BV(COM1A1); 
-  TCCR1A |= _BV(COM1B1);
+  TCCR1A |= _BV(COM1A1) | _BV(COM1B1);
   setPWM(leftPWM,0); // Turn off pwm on both pins
   setPWM(rightPWM,0);
   
@@ -115,11 +114,11 @@ void PID(double restAngle, double offset, double turning) {
   else if (steerStop) {
     long positionError = wheelPosition - targetPosition;
     if (abs(positionError) > zoneA) // Inside zone A
-        restAngle -= (double)positionError/positionScaleA;
+      restAngle -= (double)positionError/positionScaleA;
     else if (abs(positionError) > zoneB) // Inside zone B
-        restAngle -= (double)positionError/positionScaleB;
+      restAngle -= (double)positionError/positionScaleB;
     else // Inside zone C
-    restAngle -= (double)positionError/positionScaleC;   
+      restAngle -= (double)positionError/positionScaleC;   
     restAngle -= (double)wheelVelocity/velocityScaleStop;
     if (restAngle < 160) // Limit rest Angle
       restAngle = 160;
