@@ -8,9 +8,9 @@
  */
 
 #include "BalancingRobot.h"
-#include <PS3BT.h> // SS is rerouted to 8 and INT is rerouted to 7
+#include <PS3BT.h> // SS is rerouted to 8 and INT is rerouted to 7 - see http://www.circuitsathome.com/usb-host-shield-hardware-manual at "5. Interface modifications"
 USB Usb;
-PS3BT BT(&Usb,0x00,0x15,0x83,0x3D,0x0A,0x57); // Also remember to disable DEBUG in "PS3BT.cpp" to save space
+PS3BT BT(&Usb,0x00,0x15,0x83,0x3D,0x0A,0x57); // Also remember to uncomment DEBUG in "PS3BT.cpp" to save space
 
 void setup() {
   /* Setup encoders */
@@ -205,37 +205,36 @@ void receivePS3() {
   else
     steer(stop);    
 }
-
 void steer(Command command) {
   if(BT.PS3BTConnected) {
     if(BT.getAnalogHat(LeftHatY) < 117 && BT.getAnalogHat(RightHatY) < 117) {
-        targetOffset = ((double)(232-(BT.getAnalogHat(LeftHatY)+BT.getAnalogHat(RightHatY))))/33.142857143; // 232/7=33.142857143 - convert from 232-0 to 0-7
-        steerForward = true;      
+        targetOffset = scale(BT.getAnalogHat(LeftHatY)+BT.getAnalogHat(RightHatY),232,0,7); // Scale from 232-0 to 0-7
+        steerForward = true;
       } else if(BT.getAnalogHat(LeftHatY) > 137 && BT.getAnalogHat(RightHatY) > 137) {
-        targetOffset = ((double)((BT.getAnalogHat(LeftHatY)+BT.getAnalogHat(RightHatY))-276))/33.428571429; // 234/7=33.428571429 - convert from 276-510 to 0-7
+        targetOffset = scale(BT.getAnalogHat(LeftHatY)+BT.getAnalogHat(RightHatY),276,510,7); // Scale from 276-510 to 0-7
         steerBackward = true;
       }
       if(((int)BT.getAnalogHat(LeftHatY) - (int)BT.getAnalogHat(RightHatY)) > 15) {
-        turningOffset = ((double)abs(BT.getAnalogHat(LeftHatY) - BT.getAnalogHat(RightHatY)))/12.75; // 255/20=12,75 - convert from 0-255 to 0-20
-        steerLeft = true;        
-      } else if (((int)BT.getAnalogHat(RightHatY) - (int)BT.getAnalogHat(LeftHatY)) > 15) {        
-        turningOffset = ((double)abs(BT.getAnalogHat(LeftHatY) - BT.getAnalogHat(RightHatY)))/12.75; // 255/20=12,75 - convert from 0-255 to 0-20  
-        steerRight = true;      
+        turningOffset = scale(abs(BT.getAnalogHat(LeftHatY) - BT.getAnalogHat(RightHatY)),0,255,20); // Scale from 0-255 to 0-20
+        steerLeft = true;      
+      } else if (((int)BT.getAnalogHat(RightHatY) - (int)BT.getAnalogHat(LeftHatY)) > 15) {   
+        turningOffset = scale(abs(BT.getAnalogHat(LeftHatY) - BT.getAnalogHat(RightHatY)),0,255,20); // Scale from 0-255 to 0-20  
+        steerRight = true;  
       }  
   }
   if(BT.PS3NavigationBTConnected) {
     if(BT.getAnalogHat(LeftHatY) < 117) {
-      targetOffset = ((double)(116-BT.getAnalogHat(LeftHatY)))/16.571428571; // 116/7=16.571428571 - convert from 116-0 to 0-7
+      targetOffset = scale(BT.getAnalogHat(LeftHatY),116,0,7); // Scale from 116-0 to 0-7
       steerForward = true;
     } else if(BT.getAnalogHat(LeftHatY) > 137) {
-      targetOffset = ((double)(BT.getAnalogHat(LeftHatY)-138))/16.714285714; // 117/7=16.714285714 - convert from 138-255 to 0-7
+      targetOffset = scale(BT.getAnalogHat(LeftHatY),138,255,7); // Scale from 138-255 to 0-7
       steerBackward = true;
     }
     if(BT.getAnalogHat(LeftHatX) < 55) {
-      turningOffset = ((double)(54-BT.getAnalogHat(LeftHatX)))/2.7; // 54/20=2.7 - convert from 54-0 to 0-20
-      steerLeft = true;            
+      turningOffset = scale(BT.getAnalogHat(LeftHatX),54,0,20); // Scale from 54-0 to 0-20
+      steerLeft = true;     
     } else if(BT.getAnalogHat(LeftHatX) > 200) {
-      turningOffset = ((double)(BT.getAnalogHat(LeftHatX)-201))/2.7; // 54/20=2.7 - convert from 201-255 to 0-20
+      turningOffset = scale(BT.getAnalogHat(LeftHatX),201,255,20); // Scale from 201-255 to 0-20
       steerRight = true;
     }
   }
@@ -248,8 +247,15 @@ void steer(Command command) {
   }
   lastCommand = command;
 }
+double scale(double input, double inputMin, double inputMax, double outputMax) { // Like to map() just returns a double
+  if(inputMin < inputMax)
+    return (input-inputMin)/((inputMax-inputMin)/outputMax);              
+  else
+    return (inputMin-input)/((inputMin-inputMax)/outputMax);    
+}
 void stopAndReset() {
-  stopMotor(both);
+  stopMotor(left);
+  stopMotor(right);  
   lastError = 0;
   iTerm = 0;
   targetPosition = wheelPosition;
@@ -305,16 +311,15 @@ double getAccY() {
   return (atan2(-accYval,-accZval)+PI)*RAD_TO_DEG;
 }
 void calibrateSensors() {
-  double adc[3] = { 0 };
   for (uint8_t i = 0; i < 100; i++) { // Take the average of 100 readings
-    adc[0] += analogRead(gyroY);
-    adc[1] += analogRead(accY);
-    adc[2] += analogRead(accZ);
+    zeroValues[0] += analogRead(gyroY);
+    zeroValues[1] += analogRead(accY);
+    zeroValues[2] += analogRead(accZ);
     delay(10);
   }
-  zeroValues[0] = adc[0] / 100; // Gyro X-axis
-  zeroValues[1] = adc[1] / 100; // Accelerometer Y-axis
-  zeroValues[2] = adc[2] / 100; // Accelerometer Z-axis
+  zeroValues[0] /= 100; // Gyro X-axis
+  zeroValues[1] /= 100; // Accelerometer Y-axis
+  zeroValues[2] /= 100; // Accelerometer Z-axis
   
   if(zeroValues[1] > 500) { // Check which side is lying down - 1g is equal to 0.33V or 102.3 quids (0.33/3.3*1023=102.3)
     zeroValues[1] -= 102.3; // -1g when lying at one of the sides
@@ -354,22 +359,6 @@ void moveMotor(Command motor, Command direction, double speedRaw) { // speed is 
       cbi(rightPort,rightB);
     }
   }
-  else if (motor == both) {
-    setPWM(leftPWM,speed); // Left motor pwm
-    setPWM(rightPWM,speed); // Right motor pwm
-    if (direction == forward) {
-      cbi(leftPort,leftA);
-      sbi(leftPort,leftB);            
-      cbi(rightPort,rightA);
-      sbi(rightPort,rightB);
-    } 
-    else if (direction == backward) {
-      sbi(leftPort,leftA);
-      cbi(leftPort,leftB);          
-      sbi(rightPort,rightA);
-      cbi(rightPort,rightB);
-    }
-  }
 }
 void stopMotor(Command motor) {  
   if (motor == left) {
@@ -378,14 +367,6 @@ void stopMotor(Command motor) {
     sbi(leftPort,leftB);
   } 
   else if (motor == right) {
-    setPWM(rightPWM,PWMVALUE); // Set high
-    sbi(rightPort,rightA);
-    sbi(rightPort,rightB);
-  } 
-  else if (motor == both) {
-    setPWM(leftPWM,PWMVALUE); // Set high
-    sbi(leftPort,leftA);
-    sbi(leftPort,leftB);
     setPWM(rightPWM,PWMVALUE); // Set high
     sbi(rightPort,rightA);
     sbi(rightPort,rightB);

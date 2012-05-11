@@ -15,7 +15,6 @@ enum Command {
   backward,
   left,
   right,
-  both,
 };
 
 /* These are used to read and write to the port registers - see http://www.arduino.cc/en/Reference/PortManipulation 
@@ -58,7 +57,7 @@ volatile long rightCounter = 0;
 #define buzzer 6 // Connected to a BC547 transistor - there is a protection diode at the buzzer as well
 
 // Zero voltage values for the sensors - [0] = gyroY, [1] = accY, [2] = accZ
-double zeroValues[3];
+double zeroValues[3] = { 0 };
 
 /* Kalman filter variables and constants */
 const double Q_angle = 0.001; // Process noise covariance for the accelerometer - Sw
