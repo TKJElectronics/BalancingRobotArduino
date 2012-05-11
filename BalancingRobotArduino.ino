@@ -247,7 +247,7 @@ void steer(Command command) {
   }
   lastCommand = command;
 }
-double scale(double input, double inputMin, double inputMax, double outputMax) { // Like to map() just returns a double
+double scale(double input, double inputMin, double inputMax, double outputMax) { // Like map() just returns a double
   if(inputMin < inputMax)
     return (input-inputMin)/((inputMax-inputMin)/outputMax);              
   else
@@ -385,18 +385,18 @@ void setPWM(uint8_t pin, int dutyCycle) { // dutyCycle is a value between 0-ICR
 
 /* Interrupt routine and encoder read functions - I read using the port registers for faster processing */
 void leftEncoder() { 
-  if(PIND & _BV(PIND4)) // pin 4
+  if(PIND & _BV(PIND4)) // read pin 4
     leftCounter++;
   else
     leftCounter--;    
 }
 void rightEncoder() {
-  if(PIND & _BV(PIND5)) // pin 5
+  if(PIND & _BV(PIND5)) // read pin 5
     rightCounter++;
   else
     rightCounter--;  
 }
-long readLeftEncoder() {
+long readLeftEncoder() { // The encoders decrease when motors are traveling forward and increase when traveling backward
   return leftCounter;
 }
 long readRightEncoder() {
