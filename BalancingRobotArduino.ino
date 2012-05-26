@@ -10,7 +10,7 @@
 #include "BalancingRobot.h"
 #include <PS3BT.h> // SS is rerouted to 8 and INT is rerouted to 7 - see http://www.circuitsathome.com/usb-host-shield-hardware-manual at "5. Interface modifications"
 USB Usb;
-PS3BT BT(&Usb,0x00,0x15,0x83,0x3D,0x0A,0x57); // Also remember to uncomment DEBUG in "PS3BT.cpp" to save space
+PS3BT PS3(&Usb,0x00,0x15,0x83,0x3D,0x0A,0x57); // Also remember to uncomment DEBUG in "PS3BT.cpp" to save space
 
 void setup() {
   /* Setup encoders */
@@ -177,27 +177,27 @@ void receivePS3() {
 
   Usb.Task();  
 
-  if(BT.PS3BTConnected) {
-    if(BT.getButton(PS)) {
+  if(PS3.PS3Connected) {
+    if(PS3.getButton(PS)) {
       steer(stop);
-      BT.disconnect();
+      PS3.disconnect();
     } 
-    else if(BT.getButton(SELECT)) {
+    else if(PS3.getButton(SELECT)) {
       stopAndReset();
-      while(!BT.getButton(START))
+      while(!PS3.getButton(START))
         Usb.Task();        
     }
-    if((BT.getAnalogHat(LeftHatY) < 117) || (BT.getAnalogHat(RightHatY) < 117) || (BT.getAnalogHat(LeftHatY) > 137) || (BT.getAnalogHat(RightHatY) > 137)) {
+    if((PS3.getAnalogHat(LeftHatY) < 117) || (PS3.getAnalogHat(RightHatY) < 117) || (PS3.getAnalogHat(LeftHatY) > 137) || (PS3.getAnalogHat(RightHatY) > 137)) {
       steer(update);
     } else 
       steer(stop);      
   } 
-  else if(BT.PS3NavigationBTConnected) {
-    if(BT.getButton(PS)) {
+  else if(PS3.PS3NavigationConnected) {
+    if(PS3.getButton(PS)) {
       steer(stop);
-      BT.disconnect();
+      PS3.disconnect();
     } 
-    if(BT.getAnalogHat(LeftHatX) > 200 || BT.getAnalogHat(LeftHatX) < 55 || BT.getAnalogHat(LeftHatY) > 137 || BT.getAnalogHat(LeftHatY) < 117) {
+    if(PS3.getAnalogHat(LeftHatX) > 200 || PS3.getAnalogHat(LeftHatX) < 55 || PS3.getAnalogHat(LeftHatY) > 137 || PS3.getAnalogHat(LeftHatY) < 117) {
       steer(update);
     } else 
       steer(stop);  
@@ -206,35 +206,35 @@ void receivePS3() {
     steer(stop);    
 }
 void steer(Command command) {
-  if(BT.PS3BTConnected) {
-    if(BT.getAnalogHat(LeftHatY) < 117 && BT.getAnalogHat(RightHatY) < 117) {
-        targetOffset = scale(BT.getAnalogHat(LeftHatY)+BT.getAnalogHat(RightHatY),232,0,7); // Scale from 232-0 to 0-7
+  if(PS3.PS3Connected) {
+    if(PS3.getAnalogHat(LeftHatY) < 117 && PS3.getAnalogHat(RightHatY) < 117) {
+        targetOffset = scale(PS3.getAnalogHat(LeftHatY)+PS3.getAnalogHat(RightHatY),232,0,7); // Scale from 232-0 to 0-7
         steerForward = true;
-      } else if(BT.getAnalogHat(LeftHatY) > 137 && BT.getAnalogHat(RightHatY) > 137) {
-        targetOffset = scale(BT.getAnalogHat(LeftHatY)+BT.getAnalogHat(RightHatY),276,510,7); // Scale from 276-510 to 0-7
+      } else if(PS3.getAnalogHat(LeftHatY) > 137 && PS3.getAnalogHat(RightHatY) > 137) {
+        targetOffset = scale(PS3.getAnalogHat(LeftHatY)+PS3.getAnalogHat(RightHatY),276,510,7); // Scale from 276-510 to 0-7
         steerBackward = true;
       }
-      if(((int)BT.getAnalogHat(LeftHatY) - (int)BT.getAnalogHat(RightHatY)) > 15) {
-        turningOffset = scale(abs(BT.getAnalogHat(LeftHatY) - BT.getAnalogHat(RightHatY)),0,255,20); // Scale from 0-255 to 0-20
+      if(((int)PS3.getAnalogHat(LeftHatY) - (int)PS3.getAnalogHat(RightHatY)) > 15) {
+        turningOffset = scale(abs(PS3.getAnalogHat(LeftHatY) - PS3.getAnalogHat(RightHatY)),0,255,20); // Scale from 0-255 to 0-20
         steerLeft = true;      
-      } else if (((int)BT.getAnalogHat(RightHatY) - (int)BT.getAnalogHat(LeftHatY)) > 15) {   
-        turningOffset = scale(abs(BT.getAnalogHat(LeftHatY) - BT.getAnalogHat(RightHatY)),0,255,20); // Scale from 0-255 to 0-20  
+      } else if (((int)PS3.getAnalogHat(RightHatY) - (int)PS3.getAnalogHat(LeftHatY)) > 15) {   
+        turningOffset = scale(abs(PS3.getAnalogHat(LeftHatY) - PS3.getAnalogHat(RightHatY)),0,255,20); // Scale from 0-255 to 0-20  
         steerRight = true;  
       }  
   }
-  if(BT.PS3NavigationBTConnected) {
-    if(BT.getAnalogHat(LeftHatY) < 117) {
-      targetOffset = scale(BT.getAnalogHat(LeftHatY),116,0,7); // Scale from 116-0 to 0-7
+  if(PS3.PS3NavigationConnected) {
+    if(PS3.getAnalogHat(LeftHatY) < 117) {
+      targetOffset = scale(PS3.getAnalogHat(LeftHatY),116,0,7); // Scale from 116-0 to 0-7
       steerForward = true;
-    } else if(BT.getAnalogHat(LeftHatY) > 137) {
-      targetOffset = scale(BT.getAnalogHat(LeftHatY),138,255,7); // Scale from 138-255 to 0-7
+    } else if(PS3.getAnalogHat(LeftHatY) > 137) {
+      targetOffset = scale(PS3.getAnalogHat(LeftHatY),138,255,7); // Scale from 138-255 to 0-7
       steerBackward = true;
     }
-    if(BT.getAnalogHat(LeftHatX) < 55) {
-      turningOffset = scale(BT.getAnalogHat(LeftHatX),54,0,20); // Scale from 54-0 to 0-20
+    if(PS3.getAnalogHat(LeftHatX) < 55) {
+      turningOffset = scale(PS3.getAnalogHat(LeftHatX),54,0,20); // Scale from 54-0 to 0-20
       steerLeft = true;     
-    } else if(BT.getAnalogHat(LeftHatX) > 200) {
-      turningOffset = scale(BT.getAnalogHat(LeftHatX),201,255,20); // Scale from 201-255 to 0-20
+    } else if(PS3.getAnalogHat(LeftHatX) > 200) {
+      turningOffset = scale(PS3.getAnalogHat(LeftHatX),201,255,20); // Scale from 201-255 to 0-20
       steerRight = true;
     }
   }
