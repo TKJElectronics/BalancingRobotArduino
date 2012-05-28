@@ -31,16 +31,14 @@ void setup() {
     
   /* Set PWM frequency to 20kHz - see the datasheet http://www.atmel.com/Images/doc8025.pdf page 128-135 */
   // Set up PWM, Phase and Frequency Correct on pin 9 (OC1A) & pin 10 (OC1B) with ICR1 as TOP using Timer1
-  TCCR1A = 0; // clear all
-  TCCR1B = 0; // clear all
-  TCCR1B |= _BV(WGM13) | _BV(CS10); // Set PWM Phase and Frequency Correct with ICR1 as TOP and no prescaling
+  TCCR1B = _BV(WGM13) | _BV(CS10); // Set PWM Phase and Frequency Correct with ICR1 as TOP and no prescaling
   ICR1H = (PWMVALUE >> 8); // ICR1 is the TOP value - this is set so the frequency is equal to 20kHz
   ICR1L = (PWMVALUE & 0xFF);
     
   /* Enable PWM on pin 9 (OC1A) & pin 10 (OC1B) */
   // Clear OC1A/OC1B on compare match when up-counting
   // Set OC1A/OC1B on compare match when downcountin
-  TCCR1A |= _BV(COM1A1) | _BV(COM1B1);
+  TCCR1A = _BV(COM1A1) | _BV(COM1B1);
   setPWM(leftPWM,0); // Turn off pwm on both pins
   setPWM(rightPWM,0);
   
