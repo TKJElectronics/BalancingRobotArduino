@@ -71,10 +71,22 @@ void loop() {
   timer = micros();  
 
   /* Drive motors */
-  if (pitch < 150 || pitch > 210) // Stop if falling or laying down
-    stopAndReset();
-  else
-    PID(targetAngle,targetOffset,turningOffset);
+  if(layingDown) { // Check if it's balancing or laying down
+    if (pitch < 170 || pitch > 190) // If the robot is laying down, it has to be put in a vertical position before it starts balancing
+      stopAndReset();
+    else {
+      layingDown = false; // It's no longer laying down
+      PID(targetAngle,targetOffset,turningOffset);        
+    }
+  } 
+  else {
+    if (pitch < 135 || pitch > 225) { // If it's already balancing it has to be ±45 degrees before it stops trying to balance
+      layingDown = true; // The robot is in a unsolvable position, so turn off both motors and wait until it's vertical again
+      stopAndReset();
+    }
+    else
+      PID(targetAngle,targetOffset,turningOffset);
+  }
 
   /* Update wheel velocity every 100ms */
   loopCounter++;
