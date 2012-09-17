@@ -326,10 +326,10 @@ void calibrateSensors() {
   zeroValues[2] /= 100; // Accelerometer Z-axis
   
   if(zeroValues[1] > 500) { // Check which side is lying down - 1g is equal to 0.33V or 102.3 quids (0.33/3.3*1023=102.3)
-    zeroValues[1] -= 102.3; // -1g when lying at one of the sides
+    zeroValues[1] -= 102.3; // +1g when lying at one of the sides
     angle = 90; // It starts at 90 degress and 270 when facing the other way
   } else {
-    zeroValues[1] += 102.3; // +1g when lying at the other side
+    zeroValues[1] += 102.3; // -1g when lying at the other side
     angle = 270;
   }
   

@@ -27,24 +27,33 @@ enum Command {
 #define leftPortDirection DDRD
 #define leftPwmPortDirection DDRB
 
-#define leftA PIND0 // PD0 - pin 0
-#define leftB PIND1 // PD1 - pin 1
-#define leftPWM PINB1 // PB1 - pin 9 (OC1A)
+#define leftA PIND0 // PD0 - pin 0 (2INA on the Pololu motor driver)
+#define leftB PIND1 // PD1 - pin 1 (2INB on the Pololu motor driver)
+#define leftPWM PINB1 // PB1 - pin 9 (OC1A) - (2PWM on the Pololu motor driver)
 
 /* Right motor */
 #define rightPort PORTC
 #define rightPortDirection DDRC
 #define rightPwmPortDirection DDRB
 
-#define rightA PINC4 // PC4 - pin A4
-#define rightB PINC5 // PC5 - pin A5
-#define rightPWM PINB2 // PB2 - pin 10 (OC1B)
+#define rightA PINC4 // PC4 - pin A4 (1INA on the Pololu motor driver)
+#define rightB PINC5 // PC5 - pin A5 (1INB on the Pololu motor driver)
+#define rightPWM PINB2 // PB2 - pin 10 (OC1B) - (1PWM on the Pololu motor driver)
+
+/* 
+  Note that the right motor is connected as so to the Pololu motor driver:
+  Black wire - output 1A
+  Red wire - output 1B
+  And the left motor is connected as so to the Pololu motor driver:
+  Red wire - output 2A
+  Black wire - output 2B
+*/  
 
 /* Encoders */
-#define leftEncoder1 2
-#define leftEncoder2 4
-#define rightEncoder1 3
-#define rightEncoder2 5
+#define leftEncoder1 2 // Yellow wire
+#define leftEncoder2 4 // White wire
+#define rightEncoder1 3 // White wire
+#define rightEncoder2 5 // Yellow wire
 
 volatile long leftCounter = 0;
 volatile long rightCounter = 0;
