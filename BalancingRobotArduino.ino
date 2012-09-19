@@ -357,15 +357,15 @@ void setPWM(uint8_t pin, int dutyCycle) { // dutyCycle is a value between 0-ICR
 /* Interrupt routine and encoder read functions - I read using the port registers for faster processing */
 void leftEncoder() { 
   if(PIND & _BV(PIND4)) // read pin 4
-    leftCounter++;
+    leftCounter--;
   else
-    leftCounter--;    
+    leftCounter++;    
 }
 void rightEncoder() {
   if(PIND & _BV(PIND5)) // read pin 5
-    rightCounter++;
+    rightCounter--;
   else
-    rightCounter--;  
+    rightCounter++;  
 }
 long readLeftEncoder() { // The encoders decrease when motors are traveling forward and increase when traveling backward
   return leftCounter;
