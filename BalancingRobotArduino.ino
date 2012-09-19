@@ -8,9 +8,13 @@
  */
 
 #include "BalancingRobot.h"
+#include <Kalman.h> // Kalman filter library see: http://blog.tkjelectronics.dk/2012/09/a-practical-approach-to-kalman-filter-and-how-to-implement-it/
+Kalman kalman; // See https://github.com/TKJElectronics/KalmanFilter for source code
+
 #include <PS3BT.h> // SS is rerouted to 8 and INT is rerouted to 7 - see http://www.circuitsathome.com/usb-host-shield-hardware-manual at "5. Interface modifications"
 USB Usb;
-PS3BT PS3(&Usb,0x00,0x15,0x83,0x3D,0x0A,0x57); // Also remember to uncomment DEBUG in "PS3BT.cpp" to save space
+BTD Btd(&Usb);
+PS3BT PS3(&Btd,0x00,0x15,0x83,0x3D,0x0A,0x57); // Also remember to uncomment DEBUG in "PS3BT.cpp" to save space
 
 void setup() {
   /* Setup encoders */
@@ -67,7 +71,7 @@ void loop() {
   accYangle = getAccY();
   gyroYrate = getGyroYrate();
   // See my guide for more info about calculation the angles and the Kalman filter: http://arduino.cc/forum/index.php/topic,58048.0.htm
-  pitch = kalman(accYangle, gyroYrate, (double)(micros() - timer)); // calculate the angle using a Kalman filter
+  pitch = kalman.getAngle(accYangle, gyroYrate, (double)(micros() - timer)/1000000); // calculate the angle using a Kalman filter
   timer = micros();  
 
   /* Drive motors */
@@ -264,43 +268,6 @@ void stopAndReset() {
   iTerm = 0;
   targetPosition = wheelPosition;
 }
-double kalman(double newAngle, double newRate, double dtime) {
-  // KasBot V2  -  Kalman filter module - http://www.arduino.cc/cgi-bin/yabb2/YaBB.pl?num=1284738418
-  // See also http://www.x-firm.com/?page_id=145
-  // with slightly modifications by Kristian Lauszus
-  // See http://academic.csuohio.edu/simond/courses/eec644/kalman.pdf and 
-  // http://www.cs.unc.edu/~welch/media/pdf/kalman_intro.pdf for more information
-  dt = dtime / 1000000; // Convert from microseconds to seconds
-
-  // Discrete Kalman filter time update equations - Time Update ("Predict")
-  // Update xhat - Project the state ahead
-  angle += dt * (newRate - bias);
-
-  // Update estimation error covariance - Project the error covariance ahead
-  P_00 += -dt * (P_10 + P_01) + Q_angle * dt;
-  P_01 += -dt * P_11;
-  P_10 += -dt * P_11;
-  P_11 += +Q_gyro * dt;
-
-  // Discrete Kalman filter measurement update equations - Measurement Update ("Correct")
-  // Calculate Kalman gain - Compute the Kalman gain
-  S = P_00 + R_angle;
-  K_0 = P_00 / S;
-  K_1 = P_10 / S;
-
-  // Calculate angle and resting rate - Update estimate with measurement zk
-  y = newAngle - angle;
-  angle += K_0 * y;
-  bias += K_1 * y;
-
-  // Calculate estimation error covariance - Update the error covariance
-  P_00 -= K_0 * P_00;
-  P_01 -= K_0 * P_01;
-  P_10 -= K_1 * P_00;
-  P_11 -= K_1 * P_01;
-
-  return angle;
-}
 double getGyroYrate() {
   // (gyroAdc-gyroZero)/Sensitivity (In quids) - Sensitivity = 0.00333/3.3*1023=1.0323
   double gyroRate = -((double)((double)analogRead(gyroY) - zeroValues[0]) / 1.0323);
@@ -327,10 +294,10 @@ void calibrateSensors() {
   
   if(zeroValues[1] > 500) { // Check which side is lying down - 1g is equal to 0.33V or 102.3 quids (0.33/3.3*1023=102.3)
     zeroValues[1] -= 102.3; // +1g when lying at one of the sides
-    angle = 90; // It starts at 90 degress and 270 when facing the other way
+    kalman.setAngle(90); // It starts at 90 degress and 270 when facing the other way
   } else {
     zeroValues[1] += 102.3; // -1g when lying at the other side
-    angle = 270;
+    kalman.setAngle(270);
   }
   
   digitalWrite(buzzer,HIGH);

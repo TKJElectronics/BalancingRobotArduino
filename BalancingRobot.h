@@ -68,17 +68,6 @@ volatile long rightCounter = 0;
 // Zero voltage values for the sensors - [0] = gyroY, [1] = accY, [2] = accZ
 double zeroValues[3] = { 0 };
 
-/* Kalman filter variables and constants */
-const double Q_angle = 0.001; // Process noise covariance for the accelerometer - Sw
-const double Q_gyro = 0.003; // Process noise covariance for the gyro - Sw
-const double R_angle = 0.03; // Measurement noise covariance - Sv
-
-double angle; // The angle output from the Kalman filter
-double bias = 0; // The gyro bias calculated by the Kalman filter
-double P_00 = 0, P_01 = 0, P_10 = 0, P_11 = 0;
-double dt, y, S;
-double K_0, K_1;
-
 // Results
 double accYangle;
 double gyroYrate;
@@ -123,7 +112,7 @@ int zoneB = 2000;
 double positionScaleA = 250; // one resolution is 464 pulses
 double positionScaleB = 500; 
 double positionScaleC = 1000;
-double velocityScaleMove = 40;
+double velocityScaleMove = 35;
 double velocityScaleStop = 30;
 double velocityScaleTurning = 35;
 #endif
