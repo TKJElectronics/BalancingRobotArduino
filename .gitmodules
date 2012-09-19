@@ -1,0 +1,6 @@
+[submodule "USB_Host_Shield_2.0"]
+	path = USB_Host_Shield_2.0
+	url = git://github.com/felis/USB_Host_Shield_2.0.git
+[submodule "KalmanFilter"]
+	path = KalmanFilter
+	url = git://github.com/TKJElectronics/KalmanFilter.git
