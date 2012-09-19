@@ -13,7 +13,7 @@ Kalman kalman; // See https://github.com/TKJElectronics/KalmanFilter for source 
 
 #include <PS3BT.h> // SS is rerouted to 8 and INT is rerouted to 7 - see http://www.circuitsathome.com/usb-host-shield-hardware-manual at "5. Interface modifications"
 USB Usb;
-BTD Btd(&Usb);
+BTD Btd(&Usb); // Uncomment DEBUG in "BTD.cpp" to save space
 PS3BT PS3(&Btd,0x00,0x15,0x83,0x3D,0x0A,0x57); // Also remember to uncomment DEBUG in "PS3BT.cpp" to save space
 
 void setup() {
@@ -71,7 +71,7 @@ void loop() {
   accYangle = getAccY();
   gyroYrate = getGyroYrate();
   // See my guide for more info about calculation the angles and the Kalman filter: http://arduino.cc/forum/index.php/topic,58048.0.htm
-  pitch = kalman.getAngle(accYangle, gyroYrate, (double)(micros() - timer)/1000000); // calculate the angle using a Kalman filter
+  pitch = kalman.getAngle(accYangle, gyroYrate, (double)(micros() - timer)/1000000); // Calculate the angle using a Kalman filter
   timer = micros();  
 
   /* Drive motors */
@@ -304,7 +304,7 @@ void calibrateSensors() {
   delay(100);  
   digitalWrite(buzzer,LOW);
 }
-void moveMotor(Command motor, Command direction, double speedRaw) { // speed is a value in percentage 0-100%
+void moveMotor(Command motor, Command direction, double speedRaw) { // Speed is a value in percentage 0-100%
   if(speedRaw > 100)
     speedRaw = 100;
   int speed = speedRaw*((double)PWMVALUE)/100; // Scale from 100 to PWMVALUE

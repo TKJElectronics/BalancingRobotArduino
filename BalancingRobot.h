@@ -102,14 +102,14 @@ bool layingDown = true; // Use to indicate if the robot is laying down
 double targetOffset = 0; // Offset for going forward and backward
 double turningOffset = 0; // Offset for turning left and right
 
-uint8_t loopCounter = 0; // Used to update wheel velocity and buzzer beep
+uint8_t loopCounter = 0; // Used to update wheel velocity
 long wheelPosition;
 long lastWheelPosition;
 long wheelVelocity;
 long targetPosition;
 int zoneA = 4000;
 int zoneB = 2000;
-double positionScaleA = 250; // one resolution is 464 pulses
+double positionScaleA = 250; // One resolution is 464 pulses
 double positionScaleB = 500; 
 double positionScaleC = 1000;
 double velocityScaleMove = 35;
