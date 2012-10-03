@@ -186,13 +186,13 @@ void receivePS3() {
   Usb.Task();  
 
   if(PS3.PS3Connected) {
-    if(PS3.getButton(PS)) {
+    if(PS3.getButtonPress(PS)) {
       steer(stop);
       PS3.disconnect();
     } 
-    else if(PS3.getButton(SELECT)) {
+    else if(PS3.getButtonPress(SELECT)) {
       stopAndReset();
-      while(!PS3.getButton(START))
+      while(!PS3.getButtonPress(START))
         Usb.Task();        
     }
     if((PS3.getAnalogHat(LeftHatY) < 117) || (PS3.getAnalogHat(RightHatY) < 117) || (PS3.getAnalogHat(LeftHatY) > 137) || (PS3.getAnalogHat(RightHatY) > 137)) {
@@ -201,7 +201,7 @@ void receivePS3() {
       steer(stop);      
   } 
   else if(PS3.PS3NavigationConnected) {
-    if(PS3.getButton(PS)) {
+    if(PS3.getButtonPress(PS)) {
       steer(stop);
       PS3.disconnect();
     } 
