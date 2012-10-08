@@ -100,12 +100,14 @@ void loop() {
   }
   
   /* Read the PS3 Controller */
-  receivePS3();
+  readPS3();
   
   /* Use a time fixed loop */
   lastLoopUsefulTime = micros() - loopStartTime;
-  if (lastLoopUsefulTime < STD_LOOP_TIME)
-    delayMicroseconds(STD_LOOP_TIME - lastLoopUsefulTime);
+  if (lastLoopUsefulTime < STD_LOOP_TIME) {
+    while((micros() - loopStartTime) < STD_LOOP_TIME)
+        Usb.Task();
+  }
   loopStartTime = micros();
 }
 void PID(double restAngle, double offset, double turning) {
@@ -175,15 +177,13 @@ void PID(double restAngle, double offset, double turning) {
   else
     moveMotor(right, backward, PIDRight * -1);
 }
-void receivePS3() {
+void readPS3() {
   // Set all false
   steerForward = false;
   steerBackward = false;
   steerStop = false;
   steerLeft = false;
-  steerRight = false;
-
-  Usb.Task();  
+  steerRight = false; 
 
   if(PS3.PS3Connected) {
     if(PS3.getButtonPress(PS)) {
