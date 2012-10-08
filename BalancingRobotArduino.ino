@@ -93,7 +93,7 @@ void loop() {
     wheelPosition = readLeftEncoder() + readRightEncoder();
     wheelVelocity = wheelPosition - lastWheelPosition;
     lastWheelPosition = wheelPosition;
-    if (abs(wheelVelocity) <= 20 && !stopped) { // Set new targetPosition if breaking
+    if (abs(wheelVelocity) <= 20 && !stopped) { // Set new targetPosition if braking
       targetPosition = wheelPosition;
       stopped = true;
     }
@@ -118,7 +118,7 @@ void PID(double restAngle, double offset, double turning) {
     offset -= (double)wheelVelocity/velocityScaleMove; // Scale down offset at high speed and scale up when reversing
     restAngle += offset;
   }
-  /* Break */
+  /* Brake */
   else if (steerStop) {
     long positionError = wheelPosition - targetPosition;
     if (abs(positionError) > zoneA) // Inside zone A
