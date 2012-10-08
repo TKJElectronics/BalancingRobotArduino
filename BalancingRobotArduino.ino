@@ -11,10 +11,10 @@
 #include <Kalman.h> // Kalman filter library see: http://blog.tkjelectronics.dk/2012/09/a-practical-approach-to-kalman-filter-and-how-to-implement-it/
 Kalman kalman; // See https://github.com/TKJElectronics/KalmanFilter for source code
 
-#include <PS3BT.h> // SS is rerouted to 8 and INT is rerouted to 7 - see http://www.circuitsathome.com/usb-host-shield-hardware-manual at "5. Interface modifications"
+#include <Wii.h> // SS is rerouted to 8 and INT is rerouted to 7 - see http://www.circuitsathome.com/usb-host-shield-hardware-manual at "5. Interface modifications"
 USB Usb;
 BTD Btd(&Usb); // Uncomment DEBUG in "BTD.cpp" to save space
-PS3BT PS3(&Btd,0x00,0x15,0x83,0x3D,0x0A,0x57); // Also remember to uncomment DEBUG in "PS3BT.cpp" to save space
+WII Wii(&Btd); // Also uncomment DEBUG in "Wii.cpp"
 
 void setup() {
   /* Setup encoders */
@@ -32,32 +32,32 @@ void setup() {
   sbi(rightPwmPortDirection,rightPWM);
   sbi(rightPortDirection,rightA);
   sbi(rightPortDirection,rightB);  
-    
+
   /* Set PWM frequency to 20kHz - see the datasheet http://www.atmel.com/Images/doc8025.pdf page 128-135 */
   // Set up PWM, Phase and Frequency Correct on pin 9 (OC1A) & pin 10 (OC1B) with ICR1 as TOP using Timer1
   TCCR1B = _BV(WGM13) | _BV(CS10); // Set PWM Phase and Frequency Correct with ICR1 as TOP and no prescaling
   ICR1H = (PWMVALUE >> 8); // ICR1 is the TOP value - this is set so the frequency is equal to 20kHz
   ICR1L = (PWMVALUE & 0xFF);
-    
+
   /* Enable PWM on pin 9 (OC1A) & pin 10 (OC1B) */
   // Clear OC1A/OC1B on compare match when up-counting
   // Set OC1A/OC1B on compare match when downcountin
   TCCR1A = _BV(COM1A1) | _BV(COM1B1);
   setPWM(leftPWM,0); // Turn off pwm on both pins
   setPWM(rightPWM,0);
-  
+
   /* Setup pin for buzzer to beep when finished calibrating */
   pinMode(buzzer,OUTPUT);  
-  
+
   /* Setup IMU Inputs */
   analogReference(EXTERNAL); // Set voltage reference to 3.3V by connecting AREF to 3.3V
   pinMode(gyroY,INPUT);
   pinMode(accY,INPUT);
   pinMode(accZ,INPUT);      
-  
+
   if (Usb.Init() == -1) // Check if USB Host Shield is working
     while(1); // Halt
-    
+
   /* Calibrate the gyro and accelerometer relative to ground */
   calibrateSensors();
 
@@ -98,10 +98,10 @@ void loop() {
       stopped = true;
     }
   }
-  
+
   /* Read the PS3 Controller */
   receivePS3();
-  
+
   /* Use a time fixed loop */
   lastLoopUsefulTime = micros() - loopStartTime;
   if (lastLoopUsefulTime < STD_LOOP_TIME)
@@ -162,7 +162,7 @@ void PID(double restAngle, double offset, double turning) {
     PIDLeft = PIDValue;
     PIDRight = PIDValue;
   }
-  
+
   PIDLeft *= 0.95; // compensate for difference in the motors
 
   /* Set PWM Values */
@@ -185,68 +185,57 @@ void receivePS3() {
 
   Usb.Task();  
 
-  if(PS3.PS3Connected) {
-    if(PS3.getButtonPress(PS)) {
-      steer(stop);
-      PS3.disconnect();
-    } 
-    else if(PS3.getButtonPress(SELECT)) {
-      stopAndReset();
-      while(!PS3.getButtonPress(START))
-        Usb.Task();        
-    }
-    if((PS3.getAnalogHat(LeftHatY) < 117) || (PS3.getAnalogHat(RightHatY) < 117) || (PS3.getAnalogHat(LeftHatY) > 137) || (PS3.getAnalogHat(RightHatY) > 137)) {
+  if(Wii.wiimoteConnected) {
+    if(Wii.getButtonPress(B))
       steer(update);
-    } else 
+    else if(Wii.nunchuckConnected && (Wii.getAnalogHat(HatX) > 137 || Wii.getAnalogHat(HatX) < 117 || Wii.getAnalogHat(HatY) > 137 || Wii.getAnalogHat(HatY) < 117))
+      steer(update);
+    else 
       steer(stop);      
-  } 
-  else if(PS3.PS3NavigationConnected) {
-    if(PS3.getButtonPress(PS)) {
-      steer(stop);
-      PS3.disconnect();
-    } 
-    if(PS3.getAnalogHat(LeftHatX) > 200 || PS3.getAnalogHat(LeftHatX) < 55 || PS3.getAnalogHat(LeftHatY) > 137 || PS3.getAnalogHat(LeftHatY) < 117) {
-      steer(update);
-    } else 
-      steer(stop);  
-  } 
+  }
   else
     steer(stop);    
 }
 void steer(Command command) {
-  if(PS3.PS3Connected) {
-    if(PS3.getAnalogHat(LeftHatY) < 117 && PS3.getAnalogHat(RightHatY) < 117) {
-        targetOffset = scale(PS3.getAnalogHat(LeftHatY)+PS3.getAnalogHat(RightHatY),232,0,7); // Scale from 232-0 to 0-7
+  if(command == update) {
+    if(Wii.getButtonPress(B)) {
+      if(Wii.getPitch() > 180) {
+        targetOffset = scale(Wii.getPitch(),181,216,0,7);        
         steerForward = true;
-      } else if(PS3.getAnalogHat(LeftHatY) > 137 && PS3.getAnalogHat(RightHatY) > 137) {
-        targetOffset = scale(PS3.getAnalogHat(LeftHatY)+PS3.getAnalogHat(RightHatY),276,510,7); // Scale from 276-510 to 0-7
+      }     
+      else if(Wii.getPitch() < 180) {
+        targetOffset = scale(Wii.getPitch(),179,144,0,7);
         steerBackward = true;
       }
-      if(((int)PS3.getAnalogHat(LeftHatY) - (int)PS3.getAnalogHat(RightHatY)) > 15) {
-        turningOffset = scale(abs(PS3.getAnalogHat(LeftHatY) - PS3.getAnalogHat(RightHatY)),0,255,20); // Scale from 0-255 to 0-20
-        steerLeft = true;      
-      } else if (((int)PS3.getAnalogHat(RightHatY) - (int)PS3.getAnalogHat(LeftHatY)) > 15) {   
-        turningOffset = scale(abs(PS3.getAnalogHat(LeftHatY) - PS3.getAnalogHat(RightHatY)),0,255,20); // Scale from 0-255 to 0-20  
-        steerRight = true;  
-      }  
-  }
-  if(PS3.PS3NavigationConnected) {
-    if(PS3.getAnalogHat(LeftHatY) < 117) {
-      targetOffset = scale(PS3.getAnalogHat(LeftHatY),116,0,7); // Scale from 116-0 to 0-7
-      steerForward = true;
-    } else if(PS3.getAnalogHat(LeftHatY) > 137) {
-      targetOffset = scale(PS3.getAnalogHat(LeftHatY),138,255,7); // Scale from 138-255 to 0-7
-      steerBackward = true;
+      if(Wii.getRoll() > 180) {
+        turningOffset = scale(Wii.getRoll(),181,225,0,20);        
+        steerRight = true;
+      }
+      else if(Wii.getRoll() < 180) {
+        turningOffset = scale(Wii.getRoll(),179,135,0,20);
+        steerLeft = true;     
+      }
     }
-    if(PS3.getAnalogHat(LeftHatX) < 55) {
-      turningOffset = scale(PS3.getAnalogHat(LeftHatX),54,0,20); // Scale from 54-0 to 0-20
-      steerLeft = true;     
-    } else if(PS3.getAnalogHat(LeftHatX) > 200) {
-      turningOffset = scale(PS3.getAnalogHat(LeftHatX),201,255,20); // Scale from 201-255 to 0-20
-      steerRight = true;
+    else {
+      if(Wii.getAnalogHat(HatY) > 137) {
+        targetOffset = scale(Wii.getAnalogHat(HatY),138,230,0,7);
+        steerForward = true;
+      } 
+      else if(Wii.getAnalogHat(HatY) < 117) {
+        targetOffset = scale(Wii.getAnalogHat(HatY),116,25,0,7);
+        steerBackward = true;
+      }
+      if(Wii.getAnalogHat(HatX) > 137) {
+        turningOffset = scale(Wii.getAnalogHat(HatX),138,230,0,20);
+        steerRight = true;     
+      } 
+      else if(Wii.getAnalogHat(HatX) < 117) {
+        turningOffset = scale(Wii.getAnalogHat(HatX),116,25,0,20);
+        steerLeft = true;
+      }
     }
   }
-  if(command == stop) {
+  else if(command == stop) {
     steerStop = true;    
     if(lastCommand != stop) { // Set new stop position
       targetPosition = wheelPosition;
@@ -255,11 +244,17 @@ void steer(Command command) {
   }
   lastCommand = command;
 }
-double scale(double input, double inputMin, double inputMax, double outputMax) { // Like map() just returns a double
+double scale(double input, double inputMin, double inputMax, double outputMin, double outputMax) { // Like map() just returns a double
+  double output;
   if(inputMin < inputMax)
-    return (input-inputMin)/((inputMax-inputMin)/outputMax);              
+    output = (input-inputMin)/((inputMax-inputMin)/(outputMax-outputMin));              
   else
-    return (inputMin-input)/((inputMin-inputMax)/outputMax);    
+    output = (inputMin-input)/((inputMin-inputMax)/(outputMax-outputMin));
+  if(output > outputMax)
+    output = outputMax;
+  else if(output < outputMin)
+    output = outputMin;
+  return output;
 }
 void stopAndReset() {
   stopMotor(left);
@@ -291,7 +286,7 @@ void calibrateSensors() {
   zeroValues[0] /= 100; // Gyro X-axis
   zeroValues[1] /= 100; // Accelerometer Y-axis
   zeroValues[2] /= 100; // Accelerometer Z-axis
-  
+
   if(zeroValues[1] > 500) { // Check which side is lying down - 1g is equal to 0.33V or 102.3 quids (0.33/3.3*1023=102.3)
     zeroValues[1] -= 102.3; // +1g when lying at one of the sides
     kalman.setAngle(90); // It starts at 90 degress and 270 when facing the other way
@@ -299,7 +294,7 @@ void calibrateSensors() {
     zeroValues[1] += 102.3; // -1g when lying at the other side
     kalman.setAngle(270);
   }
-  
+
   digitalWrite(buzzer,HIGH);
   delay(100);  
   digitalWrite(buzzer,LOW);
