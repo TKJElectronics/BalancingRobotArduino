@@ -2,8 +2,8 @@
  * The code is released under the GNU General Public License.
  * Developed by Kristian Lauszus
  * This is the algorithm for my balancing robot/segway.
- * It is controlled by a PS3 Controller via bluetooth.
- * The PS3 Bluetooth Library can be found at the following link: https://github.com/TKJElectronics/USB_Host_Shield_2.0
+ * It is controlled by a Wiimote Controller via bluetooth.
+ * The Wii Bluetooth Library can be found at the following link: https://github.com/felis/USB_Host_Shield_2.0
  * For details, see http://blog.tkjelectronics.dk/2012/02/the-balancing-robot/
  */
 
@@ -99,14 +99,16 @@ void loop() {
     }
   }
 
-  /* Read the PS3 Controller */
-  receivePS3();
+  /* Read the Wiimote and extensions */
+  readWii();
 
   /* Use a time fixed loop */
   lastLoopUsefulTime = micros() - loopStartTime;
-  if (lastLoopUsefulTime < STD_LOOP_TIME)
-    delayMicroseconds(STD_LOOP_TIME - lastLoopUsefulTime);
-  loopStartTime = micros();
+  if (lastLoopUsefulTime < STD_LOOP_TIME) {
+    while((micros() - loopStartTime) < STD_LOOP_TIME)
+        Usb.Task();
+  }
+  loopStartTime = micros();    
 }
 void PID(double restAngle, double offset, double turning) {
   /* Steer robot */
@@ -175,15 +177,13 @@ void PID(double restAngle, double offset, double turning) {
   else
     moveMotor(right, backward, PIDRight * -1);
 }
-void receivePS3() {
+void readWii() {
   // Set all false
   steerForward = false;
   steerBackward = false;
   steerStop = false;
   steerLeft = false;
-  steerRight = false;
-
-  Usb.Task();  
+  steerRight = false;  
 
   if(Wii.wiimoteConnected) {
     if(Wii.getButtonPress(B))
