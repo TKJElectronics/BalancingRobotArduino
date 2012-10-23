@@ -102,6 +102,9 @@ bool layingDown = true; // Use to indicate if the robot is laying down
 double targetOffset = 0; // Offset for going forward and backward
 double turningOffset = 0; // Offset for turning left and right
 
+double sppPitch = 0;
+double sppRoll = 0;
+
 uint8_t loopCounter = 0; // Used to update wheel velocity
 long wheelPosition;
 long lastWheelPosition;

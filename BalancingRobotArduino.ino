@@ -11,10 +11,10 @@
 #include <Kalman.h> // Kalman filter library see: http://blog.tkjelectronics.dk/2012/09/a-practical-approach-to-kalman-filter-and-how-to-implement-it/
 Kalman kalman; // See https://github.com/TKJElectronics/KalmanFilter for source code
 
-#include <Wii.h> // SS is rerouted to 8 and INT is rerouted to 7 - see http://www.circuitsathome.com/usb-host-shield-hardware-manual at "5. Interface modifications"
+#include <SPP.h> // SS is rerouted to 8 and INT is rerouted to 7 - see http://www.circuitsathome.com/usb-host-shield-hardware-manual at "5. Interface modifications"
 USB Usb;
 BTD Btd(&Usb); // Uncomment DEBUG in "BTD.cpp" to save space
-WII Wii(&Btd); // Also uncomment DEBUG in "Wii.cpp"
+SPP SerialBT(&Btd); // Also uncomment DEBUG in "SPP.cpp"
 
 void setup() {
   /* Setup encoders */
@@ -99,8 +99,8 @@ void loop() {
     }
   }
 
-  /* Read the Wiimote and extensions */
-  readWii();
+  /* Read the SPP connection */
+  readSPP();    
 
   /* Use a time fixed loop */
   lastLoopUsefulTime = micros() - loopStartTime;
@@ -177,63 +177,55 @@ void PID(double restAngle, double offset, double turning) {
   else
     moveMotor(right, backward, PIDRight * -1);
 }
-void readWii() {
+void readSPP() {    
+  if(SerialBT.connected) {
+    if(SerialBT.available()) {
+      char input[30];
+      uint8_t i = 0;
+      while (1) {
+        input[i] = SerialBT.read();
+        if (input[i] == ';') // Keep reading until it reads a semicolon
+          break;
+        i++;
+      }
+      if(input[0] == 'S') { // Stop
+        steer(stop);        
+      }
+      else { 
+        sppPitch = atof(strtok(input, ","));
+        sppRoll = atof(strtok(NULL, ";"));
+        steer(update);
+        //SerialBT.printNumber((int16_t)sppPitch);
+        //SerialBT.printNumber((int16_t)sppRoll);
+      }
+    }
+  } else
+    steer(stop);
+}
+void steer(Command command) {
   // Set all false
   steerForward = false;
   steerBackward = false;
   steerStop = false;
   steerLeft = false;
-  steerRight = false;  
-
-  if(Wii.wiimoteConnected) {
-    if(Wii.getButtonPress(B))
-      steer(update);
-    else if(Wii.nunchuckConnected && (Wii.getAnalogHat(HatX) > 137 || Wii.getAnalogHat(HatX) < 117 || Wii.getAnalogHat(HatY) > 137 || Wii.getAnalogHat(HatY) < 117))
-      steer(update);
-    else 
-      steer(stop);      
-  }
-  else
-    steer(stop);    
-}
-void steer(Command command) {
+  steerRight = false;
   if(command == update) {
-    if(Wii.getButtonPress(B)) {
-      if(Wii.getPitch() > 180) {
-        targetOffset = scale(Wii.getPitch(),181,216,0,7);        
+      if(sppRoll > 0) {
+        targetOffset = scale(sppRoll,1,36,0,7);        
         steerForward = true;
       }     
-      else if(Wii.getPitch() < 180) {
-        targetOffset = scale(Wii.getPitch(),179,144,0,7);
+      else if(sppRoll < 0) {
+        targetOffset = scale(sppRoll,-1,-36,0,7);
         steerBackward = true;
       }
-      if(Wii.getRoll() > 180) {
-        turningOffset = scale(Wii.getRoll(),181,225,0,20);        
-        steerRight = true;
-      }
-      else if(Wii.getRoll() < 180) {
-        turningOffset = scale(Wii.getRoll(),179,135,0,20);
-        steerLeft = true;     
-      }
-    }
-    else {
-      if(Wii.getAnalogHat(HatY) > 137) {
-        targetOffset = scale(Wii.getAnalogHat(HatY),138,230,0,7);
-        steerForward = true;
-      } 
-      else if(Wii.getAnalogHat(HatY) < 117) {
-        targetOffset = scale(Wii.getAnalogHat(HatY),116,25,0,7);
-        steerBackward = true;
-      }
-      if(Wii.getAnalogHat(HatX) > 137) {
-        turningOffset = scale(Wii.getAnalogHat(HatX),138,230,0,20);
-        steerRight = true;     
-      } 
-      else if(Wii.getAnalogHat(HatX) < 117) {
-        turningOffset = scale(Wii.getAnalogHat(HatX),116,25,0,20);
+      if(sppPitch > 0) {
+        turningOffset = scale(sppPitch,1,45,0,20);        
         steerLeft = true;
       }
-    }
+      else if(sppPitch < 0) {
+        turningOffset = scale(sppPitch,-1,-45,0,20);
+        steerRight = true;     
+      }
   }
   else if(command == stop) {
     steerStop = true;    
