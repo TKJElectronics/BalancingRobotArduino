@@ -14,7 +14,7 @@ Kalman kalman; // See https://github.com/TKJElectronics/KalmanFilter for source 
 #include <SPP.h> // SS is rerouted to 8 and INT is rerouted to 7 - see http://www.circuitsathome.com/usb-host-shield-hardware-manual at "5. Interface modifications"
 USB Usb;
 BTD Btd(&Usb); // Uncomment DEBUG in "BTD.cpp" to save space
-SPP SerialBT(&Btd); // Also uncomment DEBUG in "SPP.cpp"
+SPP SerialBT(&Btd,"BalancingRobot","0000"); // Also uncomment DEBUG in "SPP.cpp"
 
 void setup() {
   /* Setup encoders */
@@ -50,7 +50,9 @@ void setup() {
   pinMode(buzzer,OUTPUT);  
 
   /* Setup IMU Inputs */
+  #ifndef PROMINI
   analogReference(EXTERNAL); // Set voltage reference to 3.3V by connecting AREF to 3.3V
+  #endif
   pinMode(gyroY,INPUT);
   pinMode(accY,INPUT);
   pinMode(accZ,INPUT);      
@@ -101,6 +103,37 @@ void loop() {
 
   /* Read the SPP connection */
   readSPP();    
+  
+  if(sendData) {
+    if(SerialBT.connected) {
+      /* Send output to processing application */
+      switch(dataCounter) {
+        case 0:      
+          dataOutput = pString;
+          dataOutput += doubleToString(Kp,2);
+          break;
+        case 1:
+          dataOutput = iString;
+          dataOutput += doubleToString(Ki,2);
+          break;
+        case 2:  
+          dataOutput = dString;
+          dataOutput += doubleToString(Kd,2);
+          break;
+        case 3:  
+          dataOutput = tString;
+          dataOutput += doubleToString(targetAngle,2);
+          break;
+        default:          
+          break;        
+      }
+      if(dataCounter < 4) {
+          SerialBT.println(dataOutput);
+          dataCounter++;
+      } else
+        sendData = false;
+    }    
+  }
 
   /* Use a time fixed loop */
   lastLoopUsefulTime = micros() - loopStartTime;
@@ -184,23 +217,107 @@ void readSPP() {
       uint8_t i = 0;
       while (1) {
         input[i] = SerialBT.read();
+        if(input[i] == 0) // Error while reading the string
+          return;
         if (input[i] == ';') // Keep reading until it reads a semicolon
           break;
         i++;
+      }      
+      /*Serial.print("Data: ");
+      Serial.write((uint8_t*)input,i);
+      Serial.println();*/
+      if(input[0] == 'A') { // Abort
+        stopAndReset();
+        while(SerialBT.read() != 'C') // Wait until continue is send
+          Usb.Task();
+      } 
+      
+      /* Set PID and target angle */
+      else if(input[0] == 'P') {
+        strtok(input, ","); // Ignore 'P'
+        Kp = atof(strtok(NULL, ";"));
+      } else if(input[0] == 'I') {
+        strtok(input, ","); // Ignore 'I'
+        Ki = atof(strtok(NULL, ";"));  
+      } else if(input[0] == 'D') {
+        strtok(input, ","); // Ignore 'D'
+        Kd = atof(strtok(NULL, ";"));  
+      } else if(input[0] == 'T') { // Target Angle
+        strtok(input, ","); // Ignore 'T'
+        targetAngle = atof(strtok(NULL, ";"));  
+      } else if(input[0] == 'G') { // The processing application sends when it need the current values
+        sendData = true; // Send output to processing application
+        dataCounter = 0;
       }
-      if(input[0] == 'S') { // Stop
-        steer(stop);        
+      /* Remote control */
+      else if(input[0] == 'S') // Stop
+        steer(stop);
+      else if(input[0] == 'F') { // Forward
+        if(input[1] == 'L')
+          steer(forwardLeft);        
+        else if(input[1] == 'R')
+          steer(forwardRight);        
+        else
+          steer(forward);        
       }
-      else { 
-        sppPitch = atof(strtok(input, ","));
-        sppRoll = atof(strtok(NULL, ";"));
-        steer(update);
-        //SerialBT.printNumber((int16_t)sppPitch);
-        //SerialBT.printNumber((int16_t)sppRoll);
+      else if(input[0] == 'B') { // Backward
+        if(input[1] == 'L')
+          steer(backwardLeft);        
+        else if(input[1] == 'R')
+          steer(backwardRight);         
+        else
+        steer(backward);
+      }
+      else if(input[0] == 'L') // Left
+        steer(left);
+      else if(input[0] == 'R') // Right
+        steer(right);
+      else if(input[0] == 'J') { // Joystick
+        strtok(input, ","); // Ignore 'J'
+        sppData1 = atof(strtok(NULL, ",")); // x-axis
+        sppData2 = atof(strtok(NULL, ";")); // y-axis
+        steer(joystick);
+      }
+      else if(input[0] == 'M') { // IMU
+        strtok(input, ","); // Ignore 'I'
+        sppData1 = atof(strtok(NULL, ",")); // Pitch
+        sppData2 = atof(strtok(NULL, ";")); // Roll
+        steer(imu);
+        //SerialBT.printNumber((int16_t)sppData1);
+        //SerialBT.printNumber((int16_t)sppData2);
       }
     }
   } else
     steer(stop);
+}
+String doubleToString(double input, uint8_t digits) {
+  String output = String();
+  /*Serial.print("Input: ");
+  Serial.print(input);
+  Serial.print(",");*/
+  if(input < 0) {
+    output += "-";
+    input = -input;    
+  }
+  // Round correctly  
+  double rounding = 0.5;
+  for (uint8_t i=0; i<digits; i++)
+    rounding /= 10.0;
+  input += rounding;  
+  
+  unsigned long intpart = (unsigned long)input;
+  double fractpart = (input-(double)intpart);
+  fractpart *= pow(10,digits);
+  output += String(intpart);
+  output += ".";
+  for(uint8_t i=1;i<digits;i++) { // Put zeroes in front of number
+    if(fractpart < pow(10,digits-i)) {
+      output += "0";
+    }
+  }
+  output += String((unsigned long)fractpart);
+  //Serial.println(output);
+  return output;
 }
 void steer(Command command) {
   // Set all false
@@ -209,23 +326,70 @@ void steer(Command command) {
   steerStop = false;
   steerLeft = false;
   steerRight = false;
-  if(command == update) {
-      if(sppRoll > 0) {
-        targetOffset = scale(sppRoll,1,36,0,7);        
+  if(command == joystick) {    
+    if(sppData2 > 0) {
+      targetOffset = scale(sppData2,0,1,0,7);        
+      steerForward = true;
+    } else if(sppData2 < 0) {
+      targetOffset = scale(sppData2,0,-1,0,7);
+      steerBackward = true;
+    } 
+    if(sppData1 > 0) {
+      turningOffset = scale(sppData1,0,1,0,20);        
+      steerRight = true;
+    } else if(sppData1 < 0) {
+      turningOffset = scale(sppData1,0,-1,0,20);
+      steerLeft = true;     
+    }
+  } else if(command == imu) {
+      if(sppData2 > 0) {
+        targetOffset = scale(sppData2,1,36,0,7);        
         steerForward = true;
       }     
-      else if(sppRoll < 0) {
-        targetOffset = scale(sppRoll,-1,-36,0,7);
+      else if(sppData2 < 0) {
+        targetOffset = scale(sppData2,-1,-36,0,7);
         steerBackward = true;
       }
-      if(sppPitch > 0) {
-        turningOffset = scale(sppPitch,1,45,0,20);        
+      if(sppData1 > 0) {
+        turningOffset = scale(sppData1,1,45,0,20);        
         steerLeft = true;
       }
-      else if(sppPitch < 0) {
-        turningOffset = scale(sppPitch,-1,-45,0,20);
+      else if(sppData1 < 0) {
+        turningOffset = scale(sppData1,-1,-45,0,20);
         steerRight = true;     
       }
+  } else if(command == forward) {
+    targetOffset = 5;
+    steerForward = true;
+  } else if(command == forwardLeft) {
+    targetOffset = 5;
+    steerForward = true;
+    turningOffset = 15;
+    steerLeft = true;
+  } else if(command == forwardRight) {
+    targetOffset = 5;
+    steerForward = true;
+    turningOffset = 15;
+    steerRight = true;
+  } else if(command == backward) {
+    targetOffset = 5;
+    steerBackward = true;
+  } else if(command == backwardLeft) {
+    targetOffset = 5;
+    steerBackward = true;
+    turningOffset = 15;
+    steerLeft = true;
+  } else if(command == backwardRight) {
+    targetOffset = 5;
+    steerBackward = true;
+    turningOffset = 15;
+    steerRight = true;
+  } else if(command == left) {
+    turningOffset = 15;
+    steerLeft = true;
+  } else if(command == right) {
+    turningOffset = 15;
+    steerRight = true;
   }
   else if(command == stop) {
     steerStop = true;    
