@@ -4,3 +4,6 @@
 [submodule "KalmanFilter"]
 	path = KalmanFilter
 	url = git://github.com/TKJElectronics/KalmanFilter.git
+[submodule "BalanduinoAndroidApp"]
+	path = BalanduinoAndroidApp
+	url = git://github.com/TKJElectronics/BalanduinoAndroidApp.git
