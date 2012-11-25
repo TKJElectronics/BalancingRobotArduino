@@ -17,18 +17,27 @@ enum Command {
   right,
 };
 
+//#define PROMINI
+
 /* These are used to read and write to the port registers - see http://www.arduino.cc/en/Reference/PortManipulation 
  I do this to save processing power - see this page for more information: http://www.billporter.info/ready-set-oscillate-the-fastest-way-to-change-arduino-pins/ */
 #define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
 #define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
 
 /* Left motor */
+#ifdef PROMINI
+#define leftPort PORTC
+#define leftPortDirection DDRC
+#define leftA PINC2 // PC2 - pin A2 (2INA on the Pololu motor driver)
+#define leftB PINC3 // PC3 - pin A3 (2INB on the Pololu motor driver)
+#else
 #define leftPort PORTD
 #define leftPortDirection DDRD
-#define leftPwmPortDirection DDRB
-
 #define leftA PIND0 // PD0 - pin 0 (2INA on the Pololu motor driver)
 #define leftB PIND1 // PD1 - pin 1 (2INB on the Pololu motor driver)
+#endif
+
+#define leftPwmPortDirection DDRB
 #define leftPWM PINB1 // PB1 - pin 9 (OC1A) - (2PWM on the Pololu motor driver)
 
 /* Right motor */
@@ -60,8 +69,13 @@ volatile long rightCounter = 0;
 
 /* IMU */
 #define gyroY A0
+#ifdef PROMINI
+#define accY A6
+#define accZ A7
+#else
 #define accY A1
 #define accZ A2
+#endif
 
 #define buzzer 6 // Connected to a BC547 transistor - there is a protection diode at the buzzer as well
 
