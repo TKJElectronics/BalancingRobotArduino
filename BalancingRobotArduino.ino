@@ -50,7 +50,9 @@ void setup() {
   pinMode(buzzer,OUTPUT);  
   
   /* Setup IMU Inputs */
+  #ifndef PROMINI
   analogReference(EXTERNAL); // Set voltage reference to 3.3V by connecting AREF to 3.3V
+  #endif
   pinMode(gyroY,INPUT);
   pinMode(accY,INPUT);
   pinMode(accZ,INPUT);      
