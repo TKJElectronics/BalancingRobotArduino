@@ -111,28 +111,29 @@ void loop() {
       /* Send output to processing application */
       switch(dataCounter) {
         case 0:      
-          dataOutput = pString;
-          dataOutput += doubleToString(Kp,2);
+          strcpy(stringBuf,"P,");
+          strcat(stringBuf,doubleToString(Kp,2));
           break;
         case 1:
-          dataOutput = iString;
-          dataOutput += doubleToString(Ki,2);
+          strcpy(stringBuf,"I,");
+          strcat(stringBuf,doubleToString(Ki,2));
           break;
         case 2:  
-          dataOutput = dString;
-          dataOutput += doubleToString(Kd,2);
+          strcpy(stringBuf,"D,");
+          strcat(stringBuf,doubleToString(Kd,2));
           break;
-        case 3:  
-          dataOutput = tString;
-          dataOutput += doubleToString(targetAngle,2);
+      case 3:  
+          strcpy(stringBuf,"T,");
+          strcat(stringBuf,doubleToString(targetAngle,2));
           break;
-        default:          
-          break;        
+      default:          
+        break;        
       }
       if(dataCounter < 4) {
-          SerialBT.println(dataOutput);
-          dataCounter++;
-      } else
+        SerialBT.println(stringBuf);
+        dataCounter++;
+      } 
+      else
         sendData = false;
     }    
   }
@@ -292,33 +293,35 @@ void readSPP() {
   } else
     steer(stop);
 }
-String doubleToString(double input, uint8_t digits) {
-  String output = String();
-  /*Serial.print("Input: ");
-  Serial.print(input);
-  Serial.print(",");*/
+const char* doubleToString(double input, uint8_t digits) {
+  char output[10];
+  char buffer[10];
   if(input < 0) {
-    output += "-";
+    strcpy(output,"-");
     input = -input;    
-  }
+  } 
+  else
+    strcpy(output,"");
+
   // Round correctly  
   double rounding = 0.5;
   for (uint8_t i=0; i<digits; i++)
     rounding /= 10.0;
   input += rounding;  
-  
+
   unsigned long intpart = (unsigned long)input;
   double fractpart = (input-(double)intpart);
   fractpart *= pow(10,digits);
-  output += String(intpart);
-  output += ".";
+  itoa(intpart,buffer,10);
+  strcat(output,buffer);
+  strcat(output,".");
   for(uint8_t i=1;i<digits;i++) { // Put zeroes in front of number
     if(fractpart < pow(10,digits-i)) {
-      output += "0";
+      strcat(output,"0");
     }
   }
-  output += String((unsigned long)fractpart);
-  //Serial.println(output);
+  itoa((unsigned long)fractpart,buffer,10);
+  strcat(output,buffer);
   return output;
 }
 void steer(Command command) {

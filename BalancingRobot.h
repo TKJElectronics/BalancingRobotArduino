@@ -1,19 +1,11 @@
 #ifndef _balancingrobot_h_
 #define _balancingrobot_h_
 
-#if defined(ARDUINO) && ARDUINO >=100
-#include "Arduino.h"
-#else
-#include <WProgram.h>
-#endif
+#include <stdint.h> // Needed for uint8_t
 
 //#define PROMINI
 
-String pString = String("P,");
-String iString = String("I,");
-String dString = String("D,");
-String tString = String("T,");
-String dataOutput = String();
+char stringBuf[20];
 
 bool sendData;
 uint8_t dataCounter;
