@@ -1,7 +1,22 @@
 #ifndef _balancingrobot_h_
 #define _balancingrobot_h_
 
-#include <stdint.h> // Needed for uint8_t
+#if defined(ARDUINO) && ARDUINO >=100
+#include "Arduino.h"
+#else
+#include <WProgram.h>
+#endif
+
+//#define PROMINI
+
+String pString = String("P,");
+String iString = String("I,");
+String dString = String("D,");
+String tString = String("T,");
+String dataOutput = String();
+
+bool sendData;
+uint8_t dataCounter;
 
 #define PWM_FREQUENCY 20000 // The motor driver can handle a pwm frequency up to 20kHz
 #define PWMVALUE F_CPU/PWM_FREQUENCY/2 // Frequency is given by F_CPU/(2*N*ICR) - where N is the prescaler, we use no prescaling so frequency is given by F_CPU/(2*ICR) - ICR = F_CPU/PWM_FREQUENCY/2
@@ -9,12 +24,17 @@
 /* Used for the PS3 Communication and motor functions */
 int lastCommand; // This is used set a new targetPosition
 enum Command {
-  update,
   stop,
   forward,
+  forwardLeft,
+  forwardRight,
   backward,
+  backwardLeft,
+  backwardRight,
   left,
   right,
+  imu,
+  joystick,
 };
 
 /* These are used to read and write to the port registers - see http://www.arduino.cc/en/Reference/PortManipulation 
@@ -23,12 +43,19 @@ enum Command {
 #define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
 
 /* Left motor */
+#ifdef PROMINI
+#define leftPort PORTC
+#define leftPortDirection DDRC
+#define leftA PINC2 // PC2 - pin A2 (2INA on the Pololu motor driver)
+#define leftB PINC3 // PC3 - pin A3 (2INB on the Pololu motor driver)
+#else
 #define leftPort PORTD
 #define leftPortDirection DDRD
-#define leftPwmPortDirection DDRB
-
 #define leftA PIND0 // PD0 - pin 0 (2INA on the Pololu motor driver)
 #define leftB PIND1 // PD1 - pin 1 (2INB on the Pololu motor driver)
+#endif
+
+#define leftPwmPortDirection DDRB
 #define leftPWM PINB1 // PB1 - pin 9 (OC1A) - (2PWM on the Pololu motor driver)
 
 /* Right motor */
@@ -60,8 +87,13 @@ volatile long rightCounter = 0;
 
 /* IMU */
 #define gyroY A0
+#ifdef PROMINI
+#define accY A6
+#define accZ A7
+#else
 #define accY A1
 #define accZ A2
+#endif
 
 #define buzzer 6 // Connected to a BC547 transistor - there is a protection diode at the buzzer as well
 
@@ -74,10 +106,10 @@ double gyroYrate;
 double pitch;
 
 /* PID variables */
-const double Kp = 7;
-const double Ki = 2;
-const double Kd = 8;
-const double targetAngle = 180;
+double Kp = 7;
+double Ki = 2;
+double Kd = 8;
+double targetAngle = 180;
 
 double lastError; // Store position error
 double iTerm; // Store integral term
@@ -101,6 +133,9 @@ bool layingDown = true; // Use to indicate if the robot is laying down
 
 double targetOffset = 0; // Offset for going forward and backward
 double turningOffset = 0; // Offset for turning left and right
+
+double sppData1 = 0;
+double sppData2 = 0;
 
 uint8_t loopCounter = 0; // Used to update wheel velocity
 long wheelPosition;

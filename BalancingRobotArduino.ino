@@ -2,8 +2,8 @@
  * The code is released under the GNU General Public License.
  * Developed by Kristian Lauszus
  * This is the algorithm for my balancing robot/segway.
- * It is controlled by a PS3 Controller via bluetooth.
- * The PS3 Bluetooth Library can be found at the following link: https://github.com/TKJElectronics/USB_Host_Shield_2.0
+ * It is controlled by a Wiimote Controller via bluetooth.
+ * The Wii Bluetooth Library can be found at the following link: https://github.com/felis/USB_Host_Shield_2.0
  * For details, see http://blog.tkjelectronics.dk/2012/02/the-balancing-robot/
  */
 
@@ -11,10 +11,10 @@
 #include <Kalman.h> // Kalman filter library see: http://blog.tkjelectronics.dk/2012/09/a-practical-approach-to-kalman-filter-and-how-to-implement-it/
 Kalman kalman; // See https://github.com/TKJElectronics/KalmanFilter for source code
 
-#include <PS3BT.h> // SS is rerouted to 8 and INT is rerouted to 7 - see http://www.circuitsathome.com/usb-host-shield-hardware-manual at "5. Interface modifications"
+#include <SPP.h> // SS is rerouted to 8 and INT is rerouted to 7 - see http://www.circuitsathome.com/usb-host-shield-hardware-manual at "5. Interface modifications"
 USB Usb;
 BTD Btd(&Usb); // Uncomment DEBUG in "BTD.cpp" to save space
-PS3BT PS3(&Btd,0x00,0x15,0x83,0x3D,0x0A,0x57); // Also remember to uncomment DEBUG in "PS3BT.cpp" to save space
+SPP SerialBT(&Btd,"BalancingRobot","0000"); // Also uncomment DEBUG in "SPP.cpp"
 
 void setup() {
   /* Setup encoders */
@@ -32,32 +32,34 @@ void setup() {
   sbi(rightPwmPortDirection,rightPWM);
   sbi(rightPortDirection,rightA);
   sbi(rightPortDirection,rightB);  
-    
+
   /* Set PWM frequency to 20kHz - see the datasheet http://www.atmel.com/Images/doc8025.pdf page 128-135 */
   // Set up PWM, Phase and Frequency Correct on pin 9 (OC1A) & pin 10 (OC1B) with ICR1 as TOP using Timer1
   TCCR1B = _BV(WGM13) | _BV(CS10); // Set PWM Phase and Frequency Correct with ICR1 as TOP and no prescaling
   ICR1H = (PWMVALUE >> 8); // ICR1 is the TOP value - this is set so the frequency is equal to 20kHz
   ICR1L = (PWMVALUE & 0xFF);
-    
+
   /* Enable PWM on pin 9 (OC1A) & pin 10 (OC1B) */
   // Clear OC1A/OC1B on compare match when up-counting
   // Set OC1A/OC1B on compare match when downcountin
   TCCR1A = _BV(COM1A1) | _BV(COM1B1);
   setPWM(leftPWM,0); // Turn off pwm on both pins
   setPWM(rightPWM,0);
-  
+
   /* Setup pin for buzzer to beep when finished calibrating */
   pinMode(buzzer,OUTPUT);  
-  
+
   /* Setup IMU Inputs */
+  #ifndef PROMINI
   analogReference(EXTERNAL); // Set voltage reference to 3.3V by connecting AREF to 3.3V
+  #endif
   pinMode(gyroY,INPUT);
   pinMode(accY,INPUT);
   pinMode(accZ,INPUT);      
-  
+
   if (Usb.Init() == -1) // Check if USB Host Shield is working
     while(1); // Halt
-    
+
   /* Calibrate the gyro and accelerometer relative to ground */
   calibrateSensors();
 
@@ -98,17 +100,48 @@ void loop() {
       stopped = true;
     }
   }
+
+  /* Read the SPP connection */
+  readSPP();    
   
-  /* Read the PS3 Controller */
-  readPS3();
-  
+  if(sendData) {
+    if(SerialBT.connected) {
+      /* Send output to processing application */
+      switch(dataCounter) {
+        case 0:      
+          dataOutput = pString;
+          dataOutput += doubleToString(Kp,2);
+          break;
+        case 1:
+          dataOutput = iString;
+          dataOutput += doubleToString(Ki,2);
+          break;
+        case 2:  
+          dataOutput = dString;
+          dataOutput += doubleToString(Kd,2);
+          break;
+        case 3:  
+          dataOutput = tString;
+          dataOutput += doubleToString(targetAngle,2);
+          break;
+        default:          
+          break;        
+      }
+      if(dataCounter < 4) {
+          SerialBT.println(dataOutput);
+          dataCounter++;
+      } else
+        sendData = false;
+    }    
+  }
+
   /* Use a time fixed loop */
   lastLoopUsefulTime = micros() - loopStartTime;
   if (lastLoopUsefulTime < STD_LOOP_TIME) {
     while((micros() - loopStartTime) < STD_LOOP_TIME)
         Usb.Task();
   }
-  loopStartTime = micros();
+  loopStartTime = micros();    
 }
 void PID(double restAngle, double offset, double turning) {
   /* Steer robot */
@@ -164,7 +197,7 @@ void PID(double restAngle, double offset, double turning) {
     PIDLeft = PIDValue;
     PIDRight = PIDValue;
   }
-  
+
   PIDLeft *= 0.95; // compensate for difference in the motors
 
   /* Set PWM Values */
@@ -177,76 +210,188 @@ void PID(double restAngle, double offset, double turning) {
   else
     moveMotor(right, backward, PIDRight * -1);
 }
-void readPS3() {
+void readSPP() {    
+  if(SerialBT.connected) {
+    if(SerialBT.available()) {
+      char input[30];
+      uint8_t i = 0;
+      while (1) {
+        input[i] = SerialBT.read();
+        if(input[i] == 0) // Error while reading the string
+          return;
+        if (input[i] == ';') // Keep reading until it reads a semicolon
+          break;
+        i++;
+      }      
+      /*Serial.print("Data: ");
+      Serial.write((uint8_t*)input,i);
+      Serial.println();*/
+      if(input[0] == 'A') { // Abort
+        stopAndReset();
+        while(SerialBT.read() != 'C') // Wait until continue is send
+          Usb.Task();
+      } 
+      
+      /* Set PID and target angle */
+      else if(input[0] == 'P') {
+        strtok(input, ","); // Ignore 'P'
+        Kp = atof(strtok(NULL, ";"));
+      } else if(input[0] == 'I') {
+        strtok(input, ","); // Ignore 'I'
+        Ki = atof(strtok(NULL, ";"));  
+      } else if(input[0] == 'D') {
+        strtok(input, ","); // Ignore 'D'
+        Kd = atof(strtok(NULL, ";"));  
+      } else if(input[0] == 'T') { // Target Angle
+        strtok(input, ","); // Ignore 'T'
+        targetAngle = atof(strtok(NULL, ";"));  
+      } else if(input[0] == 'G') { // The processing application sends when it need the current values
+        sendData = true; // Send output to processing application
+        dataCounter = 0;
+      }
+      /* Remote control */
+      else if(input[0] == 'S') // Stop
+        steer(stop);
+      else if(input[0] == 'F') { // Forward
+        if(input[1] == 'L')
+          steer(forwardLeft);        
+        else if(input[1] == 'R')
+          steer(forwardRight);        
+        else
+          steer(forward);        
+      }
+      else if(input[0] == 'B') { // Backward
+        if(input[1] == 'L')
+          steer(backwardLeft);        
+        else if(input[1] == 'R')
+          steer(backwardRight);         
+        else
+        steer(backward);
+      }
+      else if(input[0] == 'L') // Left
+        steer(left);
+      else if(input[0] == 'R') // Right
+        steer(right);
+      else if(input[0] == 'J') { // Joystick
+        strtok(input, ","); // Ignore 'J'
+        sppData1 = atof(strtok(NULL, ",")); // x-axis
+        sppData2 = atof(strtok(NULL, ";")); // y-axis
+        steer(joystick);
+      }
+      else if(input[0] == 'M') { // IMU
+        strtok(input, ","); // Ignore 'I'
+        sppData1 = atof(strtok(NULL, ",")); // Pitch
+        sppData2 = atof(strtok(NULL, ";")); // Roll
+        steer(imu);
+        //SerialBT.printNumber((int16_t)sppData1);
+        //SerialBT.printNumber((int16_t)sppData2);
+      }
+    }
+  } else
+    steer(stop);
+}
+String doubleToString(double input, uint8_t digits) {
+  String output = String();
+  /*Serial.print("Input: ");
+  Serial.print(input);
+  Serial.print(",");*/
+  if(input < 0) {
+    output += "-";
+    input = -input;    
+  }
+  // Round correctly  
+  double rounding = 0.5;
+  for (uint8_t i=0; i<digits; i++)
+    rounding /= 10.0;
+  input += rounding;  
+  
+  unsigned long intpart = (unsigned long)input;
+  double fractpart = (input-(double)intpart);
+  fractpart *= pow(10,digits);
+  output += String(intpart);
+  output += ".";
+  for(uint8_t i=1;i<digits;i++) { // Put zeroes in front of number
+    if(fractpart < pow(10,digits-i)) {
+      output += "0";
+    }
+  }
+  output += String((unsigned long)fractpart);
+  //Serial.println(output);
+  return output;
+}
+void steer(Command command) {
   // Set all false
   steerForward = false;
   steerBackward = false;
   steerStop = false;
   steerLeft = false;
-  steerRight = false; 
-
-  if(PS3.PS3Connected) {
-    if(PS3.getButtonPress(PS)) {
-      steer(stop);
-      PS3.disconnect();
+  steerRight = false;
+  if(command == joystick) {    
+    if(sppData2 > 0) {
+      targetOffset = scale(sppData2,0,1,0,7);        
+      steerForward = true;
+    } else if(sppData2 < 0) {
+      targetOffset = scale(sppData2,0,-1,0,7);
+      steerBackward = true;
     } 
-    else if(PS3.getButtonPress(SELECT)) {
-      stopAndReset();
-      while(!PS3.getButtonPress(START))
-        Usb.Task();        
+    if(sppData1 > 0) {
+      turningOffset = scale(sppData1,0,1,0,20);        
+      steerRight = true;
+    } else if(sppData1 < 0) {
+      turningOffset = scale(sppData1,0,-1,0,20);
+      steerLeft = true;     
     }
-    if((PS3.getAnalogHat(LeftHatY) < 117) || (PS3.getAnalogHat(RightHatY) < 117) || (PS3.getAnalogHat(LeftHatY) > 137) || (PS3.getAnalogHat(RightHatY) > 137)) {
-      steer(update);
-    } else 
-      steer(stop);      
-  } 
-  else if(PS3.PS3NavigationConnected) {
-    if(PS3.getButtonPress(PS)) {
-      steer(stop);
-      PS3.disconnect();
-    } 
-    if(PS3.getAnalogHat(LeftHatX) > 200 || PS3.getAnalogHat(LeftHatX) < 55 || PS3.getAnalogHat(LeftHatY) > 137 || PS3.getAnalogHat(LeftHatY) < 117) {
-      steer(update);
-    } else 
-      steer(stop);  
-  } 
-  else
-    steer(stop);    
-}
-void steer(Command command) {
-  if(PS3.PS3Connected) {
-    if(PS3.getAnalogHat(LeftHatY) < 117 && PS3.getAnalogHat(RightHatY) < 117) {
-        targetOffset = scale(PS3.getAnalogHat(LeftHatY)+PS3.getAnalogHat(RightHatY),232,0,7); // Scale from 232-0 to 0-7
+  } else if(command == imu) {
+      if(sppData2 > 0) {
+        targetOffset = scale(sppData2,1,36,0,7);        
         steerForward = true;
-      } else if(PS3.getAnalogHat(LeftHatY) > 137 && PS3.getAnalogHat(RightHatY) > 137) {
-        targetOffset = scale(PS3.getAnalogHat(LeftHatY)+PS3.getAnalogHat(RightHatY),276,510,7); // Scale from 276-510 to 0-7
+      }     
+      else if(sppData2 < 0) {
+        targetOffset = scale(sppData2,-1,-36,0,7);
         steerBackward = true;
       }
-      if(((int)PS3.getAnalogHat(LeftHatY) - (int)PS3.getAnalogHat(RightHatY)) > 15) {
-        turningOffset = scale(abs(PS3.getAnalogHat(LeftHatY) - PS3.getAnalogHat(RightHatY)),0,255,20); // Scale from 0-255 to 0-20
-        steerLeft = true;      
-      } else if (((int)PS3.getAnalogHat(RightHatY) - (int)PS3.getAnalogHat(LeftHatY)) > 15) {   
-        turningOffset = scale(abs(PS3.getAnalogHat(LeftHatY) - PS3.getAnalogHat(RightHatY)),0,255,20); // Scale from 0-255 to 0-20  
-        steerRight = true;  
-      }  
+      if(sppData1 > 0) {
+        turningOffset = scale(sppData1,1,45,0,20);        
+        steerLeft = true;
+      }
+      else if(sppData1 < 0) {
+        turningOffset = scale(sppData1,-1,-45,0,20);
+        steerRight = true;     
+      }
+  } else if(command == forward) {
+    targetOffset = 5;
+    steerForward = true;
+  } else if(command == forwardLeft) {
+    targetOffset = 5;
+    steerForward = true;
+    turningOffset = 15;
+    steerLeft = true;
+  } else if(command == forwardRight) {
+    targetOffset = 5;
+    steerForward = true;
+    turningOffset = 15;
+    steerRight = true;
+  } else if(command == backward) {
+    targetOffset = 5;
+    steerBackward = true;
+  } else if(command == backwardLeft) {
+    targetOffset = 5;
+    steerBackward = true;
+    turningOffset = 15;
+    steerLeft = true;
+  } else if(command == backwardRight) {
+    targetOffset = 5;
+    steerBackward = true;
+    turningOffset = 15;
+    steerRight = true;
+  } else if(command == left) {
+    turningOffset = 15;
+    steerLeft = true;
+  } else if(command == right) {
+    turningOffset = 15;
+    steerRight = true;
   }
-  if(PS3.PS3NavigationConnected) {
-    if(PS3.getAnalogHat(LeftHatY) < 117) {
-      targetOffset = scale(PS3.getAnalogHat(LeftHatY),116,0,7); // Scale from 116-0 to 0-7
-      steerForward = true;
-    } else if(PS3.getAnalogHat(LeftHatY) > 137) {
-      targetOffset = scale(PS3.getAnalogHat(LeftHatY),138,255,7); // Scale from 138-255 to 0-7
-      steerBackward = true;
-    }
-    if(PS3.getAnalogHat(LeftHatX) < 55) {
-      turningOffset = scale(PS3.getAnalogHat(LeftHatX),54,0,20); // Scale from 54-0 to 0-20
-      steerLeft = true;     
-    } else if(PS3.getAnalogHat(LeftHatX) > 200) {
-      turningOffset = scale(PS3.getAnalogHat(LeftHatX),201,255,20); // Scale from 201-255 to 0-20
-      steerRight = true;
-    }
-  }
-  if(command == stop) {
+  else if(command == stop) {
     steerStop = true;    
     if(lastCommand != stop) { // Set new stop position
       targetPosition = wheelPosition;
@@ -255,11 +400,17 @@ void steer(Command command) {
   }
   lastCommand = command;
 }
-double scale(double input, double inputMin, double inputMax, double outputMax) { // Like map() just returns a double
+double scale(double input, double inputMin, double inputMax, double outputMin, double outputMax) { // Like map() just returns a double
+  double output;
   if(inputMin < inputMax)
-    return (input-inputMin)/((inputMax-inputMin)/outputMax);              
+    output = (input-inputMin)/((inputMax-inputMin)/(outputMax-outputMin));              
   else
-    return (inputMin-input)/((inputMin-inputMax)/outputMax);    
+    output = (inputMin-input)/((inputMin-inputMax)/(outputMax-outputMin));
+  if(output > outputMax)
+    output = outputMax;
+  else if(output < outputMin)
+    output = outputMin;
+  return output;
 }
 void stopAndReset() {
   stopMotor(left);
@@ -291,7 +442,7 @@ void calibrateSensors() {
   zeroValues[0] /= 100; // Gyro X-axis
   zeroValues[1] /= 100; // Accelerometer Y-axis
   zeroValues[2] /= 100; // Accelerometer Z-axis
-  
+
   if(zeroValues[1] > 500) { // Check which side is lying down - 1g is equal to 0.33V or 102.3 quids (0.33/3.3*1023=102.3)
     zeroValues[1] -= 102.3; // +1g when lying at one of the sides
     kalman.setAngle(90); // It starts at 90 degress and 270 when facing the other way
@@ -299,7 +450,7 @@ void calibrateSensors() {
     zeroValues[1] += 102.3; // -1g when lying at the other side
     kalman.setAngle(270);
   }
-  
+
   digitalWrite(buzzer,HIGH);
   delay(100);  
   digitalWrite(buzzer,LOW);
