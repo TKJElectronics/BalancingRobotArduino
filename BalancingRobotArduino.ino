@@ -2,8 +2,10 @@
  * The code is released under the GNU General Public License.
  * Developed by Kristian Lauszus
  * This is the algorithm for my balancing robot/segway.
- * It is controlled by a Wiimote Controller via bluetooth.
- * The Wii Bluetooth Library can be found at the following link: https://github.com/felis/USB_Host_Shield_2.0
+ * It is controlled by either an Android app or a Processing application via bluetooth.
+ * The Android app can be found at the following link: https://github.com/TKJElectronics/BalanduinoAndroidApp
+ * The Processing application can be found here: https://github.com/TKJElectronics/BalancingRobotArduino/tree/master/ProcessingApp
+ * The SPP Bluetooth Library can be found at the following link: https://github.com/felis/USB_Host_Shield_2.0
  * For details, see http://blog.tkjelectronics.dk/2012/02/the-balancing-robot/
  */
 
