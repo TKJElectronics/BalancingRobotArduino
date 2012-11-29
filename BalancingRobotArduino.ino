@@ -269,7 +269,7 @@ void readSPP() {
         else if(input[1] == 'R')
           steer(backwardRight);         
         else
-        steer(backward);
+          steer(backward);
       }
       else if(input[0] == 'L') // Left
         steer(left);

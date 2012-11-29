@@ -18,7 +18,7 @@ For more information about the Kalman filter see my blog post: [http://blog.tkje
 To steer the robot, I use a [USB Host Shield](http://www.circuitsathome.com/products-page/arduino-shields/usb-host-shield-2-0-for-arduino/) together with my SPP Bluetooth Library for Arduino: [https://github.com/felis/USB_Host_Shield_2.0/blob/master/SPP.cpp](https://github.com/felis/USB_Host_Shield_2.0/blob/master/SPP.cpp).
 More information can be found at the blog psot: [http://blog.tkjelectronics.dk/2012/07/rfcommspp-library-for-arduino/](http://blog.tkjelectronics.dk/2012/07/rfcommspp-library-for-arduino/).
 
-You can either use an Android app I wrote: [https://github.com/TKJElectronics/BalanduinoAndroidApp](https://github.com/TKJElectronics/BalanduinoAndroidApp) or the [Processing Application](https://github.com/TKJElectronics/BalancingRobotArduino/tree/SPP/ProcessingApp) to control the robot.
+You can either use an Android app I wrote: [https://github.com/TKJElectronics/BalanduinoAndroidApp](https://github.com/TKJElectronics/BalanduinoAndroidApp) or the [Processing Application](https://github.com/TKJElectronics/BalancingRobotArduino/tree/master/ProcessingApp) to control the robot.
 
 For information about the hardware, see the wiki: [https://github.com/TKJElectronics/BalancingRobot/wiki/Hardware](https://github.com/TKJElectronics/BalancingRobot/wiki/Hardware).
 
