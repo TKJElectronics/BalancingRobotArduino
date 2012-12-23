@@ -13,8 +13,6 @@ String stringD = "";
 String stringTargetAngle = "";
 
 PFont f;
-//PImage redButton;
-//PImage greenButton;
 
 boolean useDropDownLists = true; // Set if you want to use the dropdownlist or not
 byte defaultComPort = 0;
@@ -43,9 +41,6 @@ boolean sendData;
 void setup() {
   controlP5 = new ControlP5(this);
   size(337, 330);
-
-  //redButton = loadImage("Red_Button.gif");
-  //greenButton = loadImage("Green_Button.gif");
 
   f = loadFont("EuphemiaUCAS-Bold-30.vlw");
   textFont(f, 30);
@@ -169,12 +164,6 @@ void draw() {
     }
     sendData = false;
   }
-
-  /* Set images */
-  /*if (initialized)
-   image(greenButton, 300, 250, 30, 30);
-   else
-   image(redButton, 300, 250, 30, 30);*/
 }
 void Abort(int theValue) {
   if (connectedSerial) {
