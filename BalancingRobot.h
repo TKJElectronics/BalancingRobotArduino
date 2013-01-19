@@ -5,9 +5,10 @@
 
 //#define PROMINI
 
-char stringBuf[20];
+char stringBuf[30];
 
 bool sendData;
+bool sendPIDValues;
 uint8_t dataCounter;
 
 #define PWM_FREQUENCY 20000 // The motor driver can handle a pwm frequency up to 20kHz
@@ -18,11 +19,7 @@ int lastCommand; // This is used set a new targetPosition
 enum Command {
   stop,
   forward,
-  forwardLeft,
-  forwardRight,
   backward,
-  backwardLeft,
-  backwardRight,
   left,
   right,
   imu,
@@ -95,6 +92,7 @@ double zeroValues[3] = { 0 };
 // Results
 double accYangle;
 double gyroYrate;
+double gyroAngle;
 double pitch;
 
 /* PID variables */

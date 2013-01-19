@@ -74,6 +74,7 @@ void loop() {
   /* Calculate pitch */
   accYangle = getAccY();
   gyroYrate = getGyroYrate();
+  gyroAngle += gyroYrate*((double)(micros()-timer)/1000000);
   // See my guide for more info about calculation the angles and the Kalman filter: http://arduino.cc/forum/index.php/topic,58048.0.htm
   pitch = kalman.getAngle(accYangle, gyroYrate, (double)(micros() - timer)/1000000); // Calculate the angle using a Kalman filter
   timer = micros();  
@@ -106,36 +107,36 @@ void loop() {
   /* Read the SPP connection */
   readSPP();    
   
-  if(sendData) {
-    if(SerialBT.connected) {
-      /* Send output to processing application */
+  if(SerialBT.connected) {
+    Usb.Task();
+    if(sendPIDValues) {
+      sendPIDValues = false;
+      strcpy(stringBuf,"P,");
+      strcat(stringBuf,SerialBT.doubleToString(Kp,2));
+      strcat(stringBuf,",");
+      strcat(stringBuf,SerialBT.doubleToString(Ki,2));
+      strcat(stringBuf,",");
+      strcat(stringBuf,SerialBT.doubleToString(Kd,2));
+      strcat(stringBuf,",");
+      strcat(stringBuf,SerialBT.doubleToString(targetAngle,2));
+      SerialBT.println(stringBuf);
+      dataCounter = 1;
+    } else if(sendData) {
       switch(dataCounter) {
         case 0:      
-          strcpy(stringBuf,"P,");
-          strcat(stringBuf,doubleToString(Kp,2));
+          strcpy(stringBuf,"V,");
+          strcat(stringBuf,SerialBT.doubleToString(accYangle,2));
+          strcat(stringBuf,",");
+          strcat(stringBuf,SerialBT.doubleToString(gyroAngle,2));
+          strcat(stringBuf,",");
+          strcat(stringBuf,SerialBT.doubleToString(pitch,2));
+          SerialBT.println(stringBuf);
           break;
-        case 1:
-          strcpy(stringBuf,"I,");
-          strcat(stringBuf,doubleToString(Ki,2));
-          break;
-        case 2:  
-          strcpy(stringBuf,"D,");
-          strcat(stringBuf,doubleToString(Kd,2));
-          break;
-      case 3:  
-          strcpy(stringBuf,"T,");
-          strcat(stringBuf,doubleToString(targetAngle,2));
-          break;
-      default:          
-        break;        
-      }
-      if(dataCounter < 4) {
-        SerialBT.println(stringBuf);
-        dataCounter++;
-      } 
-      else
-        sendData = false;
-    }    
+      }    
+      dataCounter++;
+      if(dataCounter > 4)
+        dataCounter = 0;    
+    }
   }
 
   /* Use a time fixed loop */
@@ -213,7 +214,8 @@ void PID(double restAngle, double offset, double turning) {
   else
     moveMotor(right, backward, PIDRight * -1);
 }
-void readSPP() {    
+void readSPP() {
+  Usb.Task();
   if(SerialBT.connected) {
     if(SerialBT.available()) {
       char input[30];
@@ -248,33 +250,17 @@ void readSPP() {
       } else if(input[0] == 'T') { // Target Angle
         strtok(input, ","); // Ignore 'T'
         targetAngle = atof(strtok(NULL, ";"));  
-      } else if(input[0] == 'G') { // The processing application sends when it need the current values
-        sendData = true; // Send output to processing application
-        dataCounter = 0;
+      } else if(input[0] == 'G') { // The processing/Android application sends when it need the current values
+        if(input[1] == 'P') // PID Values
+          sendPIDValues = true;
+        else if(input[1] == 'B') // Begin
+          sendData = true; // Send output to processing/Android application
+        else if(input[1] == 'S') // Stop
+          sendData = false; // Stop sending output to processing/Android application
       }
       /* Remote control */
       else if(input[0] == 'S') // Stop
-        steer(stop);
-      else if(input[0] == 'F') { // Forward
-        if(input[1] == 'L')
-          steer(forwardLeft);        
-        else if(input[1] == 'R')
-          steer(forwardRight);        
-        else
-          steer(forward);        
-      }
-      else if(input[0] == 'B') { // Backward
-        if(input[1] == 'L')
-          steer(backwardLeft);        
-        else if(input[1] == 'R')
-          steer(backwardRight);         
-        else
-          steer(backward);
-      }
-      else if(input[0] == 'L') // Left
-        steer(left);
-      else if(input[0] == 'R') // Right
-        steer(right);
+        steer(stop);      
       else if(input[0] == 'J') { // Joystick
         strtok(input, ","); // Ignore 'J'
         sppData1 = atof(strtok(NULL, ",")); // x-axis
@@ -286,43 +272,12 @@ void readSPP() {
         sppData1 = atof(strtok(NULL, ",")); // Pitch
         sppData2 = atof(strtok(NULL, ";")); // Roll
         steer(imu);
-        //SerialBT.printNumber((int16_t)sppData1);
-        //SerialBT.printNumber((int16_t)sppData2);
+        //SerialBT.printNumberln(sppData1);
+        //SerialBT.printNumberln(sppData2);
       }
     }
   } else
     steer(stop);
-}
-const char* doubleToString(double input, uint8_t digits) {
-  char output[10];
-  char buffer[10];
-  if(input < 0) {
-    strcpy(output,"-");
-    input = -input;    
-  } 
-  else
-    strcpy(output,"");
-
-  // Round correctly  
-  double rounding = 0.5;
-  for (uint8_t i=0; i<digits; i++)
-    rounding /= 10.0;
-  input += rounding;  
-
-  unsigned long intpart = (unsigned long)input;
-  double fractpart = (input-(double)intpart);
-  fractpart *= pow(10,digits);
-  itoa(intpart,buffer,10);
-  strcat(output,buffer);
-  strcat(output,".");
-  for(uint8_t i=1;i<digits;i++) { // Put zeroes in front of number
-    if(fractpart < pow(10,digits-i)) {
-      strcat(output,"0");
-    }
-  }
-  itoa((unsigned long)fractpart,buffer,10);
-  strcat(output,buffer);
-  return output;
 }
 void steer(Command command) {
   // Set all false
@@ -363,39 +318,8 @@ void steer(Command command) {
         turningOffset = scale(sppData1,-1,-45,0,20);
         steerRight = true;     
       }
-  } else if(command == forward) {
-    targetOffset = 5;
-    steerForward = true;
-  } else if(command == forwardLeft) {
-    targetOffset = 5;
-    steerForward = true;
-    turningOffset = 15;
-    steerLeft = true;
-  } else if(command == forwardRight) {
-    targetOffset = 5;
-    steerForward = true;
-    turningOffset = 15;
-    steerRight = true;
-  } else if(command == backward) {
-    targetOffset = 5;
-    steerBackward = true;
-  } else if(command == backwardLeft) {
-    targetOffset = 5;
-    steerBackward = true;
-    turningOffset = 15;
-    steerLeft = true;
-  } else if(command == backwardRight) {
-    targetOffset = 5;
-    steerBackward = true;
-    turningOffset = 15;
-    steerRight = true;
-  } else if(command == left) {
-    turningOffset = 15;
-    steerLeft = true;
-  } else if(command == right) {
-    turningOffset = 15;
-    steerRight = true;
   }
+  
   else if(command == stop) {
     steerStop = true;    
     if(lastCommand != stop) { // Set new stop position
@@ -451,9 +375,11 @@ void calibrateSensors() {
   if(zeroValues[1] > 500) { // Check which side is lying down - 1g is equal to 0.33V or 102.3 quids (0.33/3.3*1023=102.3)
     zeroValues[1] -= 102.3; // +1g when lying at one of the sides
     kalman.setAngle(90); // It starts at 90 degress and 270 when facing the other way
+    gyroAngle = 90;
   } else {
     zeroValues[1] += 102.3; // -1g when lying at the other side
     kalman.setAngle(270);
+    gyroAngle = 270;
   }
 
   digitalWrite(buzzer,HIGH);
