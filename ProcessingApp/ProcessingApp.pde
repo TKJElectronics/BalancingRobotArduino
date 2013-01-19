@@ -23,11 +23,6 @@ DropdownList COMports; // Define the variable ports as a Dropdownlist.
 Serial serial; // Define the variable port as a Serial object.
 int portNumber = -1; // The dropdown list will return a float value, which we will connvert into an int. We will use this int for that.
 
-DropdownList baudrate;
-int selectedBaudrate = -1; // Used to indicate which baudrate has been selected
-String[] baudrates = {
-  "1200", "2400", "4800", "9600", "19200", "38400", "57600", "115200" // Supported baudrates
-};
 boolean connectedSerial;
 boolean aborted;
 boolean initialized; // True if connected to the device
@@ -38,18 +33,26 @@ boolean leftPressed;
 boolean rightPressed;
 boolean sendData;
 
+String stringGyro;
+String stringAcc;
+String stringKalman;
+
+float[] acc = new float[600];
+float[] gyro = new float[600];
+float[] kalman = new float[600];
+
 void setup() {
   controlP5 = new ControlP5(this);
-  size(337, 330);
+  size(937, 330);
 
   f = loadFont("EuphemiaUCAS-Bold-30.vlw");
   textFont(f, 30);
 
   /* For remote control */
-  controlP5.addButton("Up", 0, width/2-20, 70, 40, 20);
-  controlP5.addButton("Down", 0, width/2-20, 92, 40, 20);
-  controlP5.addButton("Left", 0, width/2-62, 92, 40, 20);
-  controlP5.addButton("Right", 0, width/2+22, 92, 40, 20);  
+  controlP5.addButton("Up", 0, 337/2-20, 70, 40, 20);
+  controlP5.addButton("Down", 0, 337/2-20, 92, 40, 20);
+  controlP5.addButton("Left", 0, 337/2-62, 92, 40, 20);
+  controlP5.addButton("Right", 0, 337/2+22, 92, 40, 20);  
 
   /* For setting the PID values etc. */
   P = controlP5.addTextfield("P", 10, 165, 35, 20);
@@ -79,6 +82,12 @@ void setup() {
   controlP5.addButton("Abort", 0, 10, 300, 40, 20);
   controlP5.addButton("Continue", 0, 55, 300, 50, 20);
   controlP5.addButton("StoreValues", 0, 267, 300, 60, 20);
+  
+  for (int i=0;i<600;i++) { // center all variables    
+    gyro[i] = height/2;
+    acc[i] = height/2; 
+    kalman[i] = height/2;
+  }
 
   //println(Serial.list()); // Used for debugging
   if (useDropDownLists)
@@ -94,7 +103,9 @@ void setup() {
       serial.bufferUntil('\n');
       connectedSerial = true;
       delay(100);
-      serial.write("G;"); // Go
+      serial.write("GP;"); // Go
+      delay(10);
+      serial.write("GB;"); // Send graph data
     }
   }/*
   for (int i=0; i<Serial.list().length; i++) { // Automaticly connect to the Balancing Robot on Mac OS X and Linux 
@@ -110,54 +121,73 @@ void setup() {
         serial.bufferUntil('\n');
         connectedSerial = true;
         delay(100);
-        serial.write("G;"); // Go
+        serial.write("GP;"); // Go
+        delay(10);
+        serial.write("GB;"); // Send graph data
       }
     }
   }*/
 }
 
 void draw() {
-  background(0);
+  /* Draw Graph */
+  background(255); // white
+  for (int i = 0;i<=width/10;i++) {      
+    stroke(200); // gray
+    line((-frameCount%10)+i*10, 0, (-frameCount%10)+i*10, height);
+    line(0, i*10, width, i*10);
+  }
+
+  stroke(0); // black
+  for (int i = 1; i <= 3; i++)
+    line(337, height/4*i, width, height/4*i); // Draw line, indicating 90 deg, 180 deg, and 270 deg
+
+  convert();
+  drawAxis();    
 
   /* Remote contol */
+  //background(0);
+  fill(0);
+  stroke(0);
+  rect(0, 0, 337, height);
   fill(0, 102, 153);
   textSize(25); 
   textAlign(CENTER); 
-  text("Press buttons to steer", width/2, 55);
+  text("Press buttons to steer", 337/2, 55);
 
   /* Set PID value etc. */
   fill(0, 102, 153);
   textSize(30); 
   textAlign(CENTER); 
-  text("Set PID Values:", width/2, 155);
-  text("Current PID Values:", width/2, 250);
+  text("Set PID Values:", 337/2, 155);
+  text("Current PID Values:", 337/2, 250);
 
   fill(255, 255, 255);
   textSize(10);  
   textAlign(LEFT);
-  text("P: " + stringP + " I: " + stringI +  " D: " + stringD + " TargetAngle: " + stringTargetAngle, 10, 275);
+  text("P: " + stringP + " I: " + stringI +  " D: " + stringD + " TargetAngle: " + stringTargetAngle, 10, height-50);
 
-  if (sendData) {
+  if (sendData) { // Data is send as a x,y-coordinates
     if (upPressed) {
       if (leftPressed)
-        serial.write("FL;");
+        serial.write("J,-0.7,0.7;"); // Forward left
       else if (rightPressed)
-        serial.write("FR;");
+        serial.write("J,0.7,0.7;"); // Forward right
       else
-        serial.write("F;");
+        serial.write("J,0,0.7;"); // Forward
     }
     else if (downPressed) {
       if (leftPressed)
-        serial.write("BL;");
+        serial.write("J,-0.7,-0.7;"); // Backward left
       else if (rightPressed)
-        serial.write("BR;");
+        serial.write("J,0.7,-0.7;"); // Backward right
       else
-        serial.write("B;");
+        serial.write("J,0,-0.7;"); // Backward
     } 
     else if (leftPressed)
-      serial.write("L;");
+      serial.write("J,-0.7,0;"); // Left
     else if (rightPressed)
-      serial.write("R;");
+      serial.write("J,0.7,0;"); // Right
     else {
       serial.write("S;");
       println("Stop");
@@ -197,7 +227,7 @@ void Submit(int theValue) {
     delay(10);
     serial.write(output4);
     delay(10);    
-    serial.write("G;"); // Send values back to application
+    serial.write("GP;"); // Send values back to application
     delay(10);
   }
   else
@@ -230,23 +260,32 @@ void serialEvent(Serial serial) {
       stringP = input[1].substring(0, 5);
     else
       stringP = input[1];
-  } else if (input[0].equals("I")) {
-    if (input[1].length() > 5)
-      stringI = input[1].substring(0, 5);
+      
+    if (input[2].length() > 5)
+      stringI = input[2].substring(0, 5);
     else
-      stringI = input[1];
-  } else if (input[0].equals("D")) {
-    if (input[1].length() > 5)
-      stringD = input[1].substring(0, 5);
+      stringI = input[2];
+      
+    if (input[3].length() > 5)
+      stringD = input[3].substring(0, 5);
     else
-      stringD = input[1];
-  } else if (input[0].equals("T")) {
-    if (input[1].length() > 6)
-      stringTargetAngle = input[1].substring(0, 6);
+      stringD = input[3];
+      
+    if (input[4].length() > 6)
+      stringTargetAngle = input[4].substring(0, 6);
     else
-      stringTargetAngle = input[1];
-  }  
-  serial.clear();  // Empty the buffer
+      stringTargetAngle = input[4];
+  }
+  if(input[0].equals("V")) {
+    stringAcc = input[1];
+    stringGyro = input[2];
+    stringKalman = input[3];
+    
+    /*print(stringAcc);
+    print(stringGyro);
+    print(stringKalman);*/
+  }
+  serial.clear();  // Empty the buffer  
 }
 void keyPressed() {
   if (key == 's' || key == 'S')
@@ -334,18 +373,16 @@ void keyReleased() {
 void controlEvent(ControlEvent theEvent) {
   if (theEvent.isGroup()) {
     if (theEvent.group().name() == "COMPort")     
-      portNumber = int(theEvent.group().value()); //Since the list returns a float, we need to convert it to an int. For that we us the int() function.    
-    else if (theEvent.group().name() == "Baudrate")    
-      selectedBaudrate = int(theEvent.group().value());
+      portNumber = int(theEvent.group().value()); //Since the list returns a float, we need to convert it to an int. For that we us the int() function.
   }
 }
 void Connect(int value) {     
   if (connectedSerial) // Disconnect existing connection
     Disconnect(0);
-  if (selectedBaudrate != -1 && portNumber != -1 && !connectedSerial) { // Check if com port and baudrate is set and if there is not already a connection established
+  if (portNumber != -1 && !connectedSerial) { // Check if com port and baudrate is set and if there is not already a connection established
     println("ConnectSerial");    
     try {
-      serial = new Serial(this, Serial.list()[portNumber], Integer.parseInt(baudrates[selectedBaudrate]));
+      serial = new Serial(this, Serial.list()[portNumber], 115200);
     } catch (Exception e) {
       //e.printStackTrace();
       println("Couldn't open serial port");
@@ -354,13 +391,13 @@ void Connect(int value) {
       serial.bufferUntil('\n');
       connectedSerial = true;
       delay(100);
-      serial.write("G;"); // Go
+      serial.write("GP;"); // Go
+      delay(10);
+      serial.write("GB;"); // Request graph data
     }
   }
   else if (portNumber == -1)
     println("Select COM Port first!");
-  else if (selectedBaudrate == -1)
-    println("Select baudrate first!");
   else if (connectedSerial)
     println("Already connected to a port!");
 }

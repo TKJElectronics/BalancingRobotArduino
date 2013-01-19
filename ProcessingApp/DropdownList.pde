@@ -1,9 +1,6 @@
 void initDropdownlist() {
-  COMports = controlP5.addDropdownList("COMPort", 10, 20, 150, 200); // Make a dropdown list with all comports
+  COMports = controlP5.addDropdownList("COMPort", 10, 20, 210, 200); // Make a dropdown list with all comports
   customize(COMports); // Setup the dropdownlist by using a function
-
-  baudrate = controlP5.addDropdownList("Baudrate", 165, 20, 55, 200); // Make a dropdown with all the available baudrates   
-  customize(baudrate); // Setup the dropdownlist by using a function
 
   controlP5.addButton("Connect", 0, 225, 3, 45, 15);
   controlP5.addButton("Disconnect", 0, 275, 3, 52, 15);
@@ -17,13 +14,8 @@ void customize(DropdownList ddl) {
   ddl.captionLabel().style().marginTop = 3;//Set the top margin of the lable.  
   ddl.captionLabel().style().marginLeft = 3;//Set the left margin of the lable.  
   ddl.valueLabel().style().marginTop = 3;//Set the top margin of the value selected.
-
-  if (ddl.name() == "Baudrate") {
-    ddl.captionLabel().set("Baudrate");
-    for (int i=0; i<baudrates.length; i++)
-      ddl.addItem(baudrates[i], i); // give each item a value
-  }
-  else if (ddl.name() == "COMPort") {
+  
+  if (ddl.name() == "COMPort") {
     ddl.captionLabel().set("Select COM port");//Set the lable of the bar when nothing is selected. 
     //Now well add the ports to the list, we use a for loop for that.
     for (int i=0; i<Serial.list().length; i++)    
