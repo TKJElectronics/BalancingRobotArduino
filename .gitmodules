@@ -7,3 +7,6 @@
 [submodule "BalanduinoAndroidApp"]
 	path = BalanduinoAndroidApp
 	url = git://github.com/TKJElectronics/BalanduinoAndroidApp.git
+[submodule "BalanduinoProcessingApp"]
+	path = BalanduinoProcessingApp
+	url = https://github.com/TKJElectronics/BalanduinoProcessingApp.git
