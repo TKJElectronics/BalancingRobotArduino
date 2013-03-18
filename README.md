@@ -3,6 +3,12 @@
 The code is released under the GNU General Public License.
 _________
 
+# This project is deprecated
+
+This project is no longer maintained as we will instead focus on a Balancing robot kit, the Balanduino. More information can be found at the Kickstarter campaign: <http://www.kickstarter.com/projects/tkjelectronics/balanduino-balancing-robot-kit>.
+
+<br>
+
 This is the code for my balancing robot/segway. It's a ported version of the code for the mbed board which I original used. The original code can be found at the following link: [https://github.com/TKJElectronics/BalancingRobot](https://github.com/TKJElectronics/BalancingRobot).
 
 The code will work for all boards that features an ATmega328p (Duemilanove, Uno, Pro, Pro Mini etc.) - it's not directly pin compatible with the larger Arduinos (Mega, Mega 2560 etc.) as I use the port registers to save processing resources - see [http://www.arduino.cc/en/Reference/PortManipulation](http://www.arduino.cc/en/Reference/PortManipulation). But just take a look at the pinMapping pages for comparison: [http://arduino.cc/en/Hacking/PinMapping168](http://arduino.cc/en/Hacking/PinMapping168) and [http://arduino.cc/en/Hacking/PinMapping2560](http://arduino.cc/en/Hacking/PinMapping2560) and figure the pins out yourself - for instance OC1A and OC1B are not located on pin 9 and 10, but at pin 11 and 12 on the Arduino Mega.
