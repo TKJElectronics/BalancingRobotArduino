@@ -5,7 +5,7 @@ _________
 
 # This project is deprecated
 
-This project is no longer maintained as we will instead focus on a Balancing robot kit, the Balanduino. More information can be found at the Kickstarter campaign: <http://www.kickstarter.com/projects/tkjelectronics/balanduino-balancing-robot-kit>.
+This project is no longer maintained as I will instead focus on a Balancing robot kit, the Balanduino. For more information see the new repository: <https://github.com/TKJElectronics/Balanduino> and the Kickstarter campaign: <http://www.kickstarter.com/projects/tkjelectronics/balanduino-balancing-robot-kit>.
 
 <br>
 
