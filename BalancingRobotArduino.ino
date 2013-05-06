@@ -222,7 +222,7 @@ void readSPP() {
       uint8_t i = 0;
       while (1) {
         input[i] = SerialBT.read();
-        if(input[i] == 0) // Error while reading the string
+        if(input[i] == -1) // Error while reading the string
           return;
         if (input[i] == ';') // Keep reading until it reads a semicolon
           break;
